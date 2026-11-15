@@ -18,11 +18,9 @@ OpenSpec.
 
 ## Writing code
 
-Before changing product source, follow the `surgical-change` skill
-([.agents/skills/surgical-change/SKILL.md](.agents/skills/surgical-change/SKILL.md)) together with
-`neradio-surgical-change`
-([.agents/skills/neradio-surgical-change/SKILL.md](.agents/skills/neradio-surgical-change/SKILL.md)),
-which adds this repo's specifics. The conventions they depend on:
+Before changing product source, follow the `neradio-surgical-change` skill
+([.agents/skills/neradio-surgical-change/SKILL.md](.agents/skills/neradio-surgical-change/SKILL.md)).
+The conventions it depends on:
 
 - **Minimalist.** Smallest diff that fully solves the problem, at the true source of the behavior.
   No speculative configuration, abstractions, or extension points.
