@@ -70,8 +70,10 @@ Alternative: the engine's own playlist handling. Rejected: the engine isn't chos
 
 Alternative: check the content type of every stream URL. Rejected: it costs an extra connection per stream. Feature 12 asks for `.pls` and `.m3u` playlist URLs, and the extension covers those.
 
-### ICY titles: UTF-8, else Latin-1
-ICY metadata (`StreamTitle='…';`) declares no text encoding. The player reads the title as UTF-8 when the bytes are valid UTF-8, and as Latin-1 otherwise. Ogg comments are UTF-8 by definition.
+### ICY titles: UTF-8, else Windows-1252
+ICY metadata (`StreamTitle='…';`) declares no text encoding. The player reads the title as UTF-8 when the bytes are valid UTF-8, and as Windows-1252 otherwise. Ogg comments are UTF-8 by definition. Windows-1252 comes from .NET's code-pages encoding provider, which ships with .NET, so no package is added.
+
+Alternative: Latin-1 as the fallback. Rejected: titles from Windows software often have curly quotes and dashes, which are control characters in Latin-1. Windows-1252 reads every other byte the same way Latin-1 does.
 
 ### Network changes from MAUI's `Connectivity`
 The app forwards MAUI's `Connectivity.ConnectivityChanged` event to the player on both platforms. The player then starts the waits over, with a round at once, as in "Network changes".
@@ -126,7 +128,7 @@ This departs from the `neradio-surgical-change` rule that every scenario is pinn
 - [Android ends the app a while after a stop in the background] → The headset buttons no longer play the station until the user opens the app. Accepted.
 - [MAUI's connectivity event can fire for a change that doesn't affect the connection in use, such as a cellular network appearing while on Wi-Fi] → The app reconnects needlessly. The buffer usually hides it, so this is accepted.
 - [A dead primary that drops packets instead of refusing the connection] → Starting can take 10 seconds before the alternate is tried. Accepted, so that slow but working streams don't fail.
-- [Stations that send Cyrillic titles in Windows-1251] → The titles are garbled under the Latin-1 fallback. A later change could pick the fallback from the station's `language`.
+- [Stations that send Cyrillic titles in Windows-1251] → The titles are garbled under the Windows-1252 fallback. A later change could pick the fallback from the station's `language`.
 - [The engine reports an HTTP error or a web page as a format it can't play] → A working stream is skipped until playback stops. #8 checks it. If the engine can't tell them apart, the adapter reads the response's status and content type itself.
 - [A playlist URL without a `.pls`, `.m3u` or `.m3u8` extension] → It goes to the engine as a stream, fails as an unsupported format, and is skipped. Accepted as rare: catalogs usually list resolved stream URLs.
 - [The engine can't switch from the old connection's buffer without a gap] → Short drops cause a short silence. If #8 shows this, the app feeds the audio to the output itself, at the cost of more code.

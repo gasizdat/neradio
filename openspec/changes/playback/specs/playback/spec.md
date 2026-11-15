@@ -105,7 +105,7 @@ A stream whose server sends audio in a format the app can't play SHALL be skippe
 - **THEN** the app counts each attempt as a failed connection and keeps retrying, and the station plays after the user logs in
 
 ### Requirement: Track titles
-While a station plays, the app SHALL show the track title the stream reports: ICY metadata in MP3 and AAC streams, and comments in Ogg streams. Each title that differs from the current one SHALL count as a title change. A title that's empty after trimming SHALL count as no title.
+While a station plays, the app SHALL show the track title the stream reports: ICY metadata in MP3 and AAC streams, and comments in Ogg streams. A title that's empty after trimming SHALL count as no title: the app shows no title, and that isn't a title change. Any other title SHALL count as a title change when it differs from the last title that wasn't empty.
 
 #### Scenario: New title
 - **WHEN** an MP3 stream reports the title `Artist A - Song 1`, then `Artist B - Song 2`
@@ -116,19 +116,23 @@ While a station plays, the app SHALL show the track title the stream reports: IC
 - **THEN** the app shows the new title, and that counts as a title change
 
 #### Scenario: Empty title
-- **WHEN** a stream reports an empty title
-- **THEN** the app shows no title
+- **WHEN** a stream reports the title `Artist A - Song 1`, then an empty title
+- **THEN** the app shows no title, and the empty title doesn't count as a title change
 
 #### Scenario: Station without titles
 - **WHEN** a stream never reports a title
 - **THEN** the app shows no title and reports no title changes
 
 ### Requirement: Repeated titles aren't changes
-A title equal to the current one SHALL NOT count as a title change, including the first title the stream reports after a reconnect.
+A title equal to the last title that wasn't empty SHALL NOT count as a title change. That includes a title that follows an empty one, and the first title the stream reports after a reconnect.
 
 #### Scenario: Stream repeats its title
 - **WHEN** a stream reports the same title several times in a row
 - **THEN** that counts as one title change, not several
+
+#### Scenario: Same title after an empty one
+- **WHEN** a stream reports `Artist A - Song 1`, then an empty title, then `Artist A - Song 1` again
+- **THEN** the app shows `Artist A - Song 1` again, and that doesn't count as a title change
 
 #### Scenario: Same title after a reconnect
 - **WHEN** the app reconnects to a station, and the stream reports the title it reported before the connection was lost

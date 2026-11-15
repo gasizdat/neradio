@@ -25,6 +25,7 @@ Choices that go beyond the brief and the proposed defaults, for review:
 - **Track titles are in this change.** The stream's current title is shown, and each new title counts as a title change. Playlists (UC5), track history (UC6) and recording (UC8) all act on title changes, and the engine test checks them, but no issue covered them.
   - Only titles carried in the stream itself are read: ICY metadata in MP3 and AAC streams, and comments in Ogg streams. HLS streams carry titles in no single standard way, so an HLS station counts as one that reports no titles, which UC5 already allows for.
   - A title that repeats the current one isn't a change, even right after a reconnect. Otherwise every reconnect would split a recording or add a duplicate to the history.
+  - An empty title hides the shown title, but isn't a change. The next title is compared with the last one that wasn't empty, so a blank followed by the same title isn't a change either.
 - **How the formats are read.** "Ogg/Opus" in Feature 12 is read as both Ogg Vorbis and Opus. AAC includes HE-AAC, which many low-bitrate stations use. HLS means streams with AAC audio.
 - **"Within a few seconds" becomes 5 seconds.** After switching from Wi-Fi to cellular, any silence lasts at most 5 seconds. After airplane mode is turned off, audio returns within 5 seconds of the phone reconnecting to a network.
 - **The details of retrying:**
