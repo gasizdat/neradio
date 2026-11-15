@@ -1,23 +1,20 @@
 schema: spec-driven
 
-# Project context (optional)
-# Add only constraints that should guide OpenSpec artifacts and workflows.
-# Include constraints an agent cannot infer by reading the code.
-# Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  neradio is a freeware, ad-free internet radio app for Windows and Android only. Linux, macOS
+  and iOS are out of scope. Every design and task list covers both Windows and Android.
+  Stack: C# and .NET MAUI. The audio engine is chosen by a test on a real Android device; BASS
+  (through ManagedBass) is the first candidate.
+  The app is MIT-licensed. No GPL-licensed dependency while BASS (closed source) is still an
+  audio-engine candidate.
+  The brief is doc/entrypoint/UserStory.md: use cases (UCn), features, and the numbered open
+  questions (Qn).
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Cite the user-story items it covers (UCn, Feature n) and the open questions (Qn) it settles.
+    - Where an open question has a proposed default the owner hasn't overruled, use the default and
+      say so.
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
