@@ -59,7 +59,7 @@ The app SHALL play stream URLs and playlist URLs that use plain http, on Android
 - **THEN** it plays
 
 ### Requirement: Playlist URLs
-A stream URL whose path ends in `.pls`, `.m3u` or `.m3u8` SHALL be read as a playlist, unless it's an HLS playlist. The app SHALL download the playlist each time a round reaches it, and SHALL try the stream URLs it lists, in their order, in place of the playlist URL. A playlist that can't be downloaded, or that lists no usable stream URL, SHALL count as a stream that failed to connect.
+A stream URL whose path ends in `.pls`, `.m3u` or `.m3u8` SHALL be read as a playlist, unless it's an HLS playlist. The app SHALL download the playlist each time a round reaches it, and SHALL try the stream URLs it lists, in their order, in place of the playlist URL. A playlist that can't be downloaded within 10 seconds, or that lists no usable stream URL, SHALL count as a stream that failed to connect.
 
 #### Scenario: PLS playlist
 - **WHEN** a station's stream URL is a `.pls` file listing two stream URLs, and the first doesn't connect
@@ -76,6 +76,10 @@ A stream URL whose path ends in `.pls`, `.m3u` or `.m3u8` SHALL be read as a pla
 #### Scenario: Playlist can't be downloaded
 - **WHEN** a station's only stream URL is a playlist, and downloading it fails
 - **THEN** the app treats it as a stream that failed to connect and keeps retrying
+
+#### Scenario: Playlist server doesn't answer
+- **WHEN** a station's primary stream URL is a playlist whose server accepts the connection but sends nothing, and its alternate is an MP3 stream
+- **THEN** the app gives up on the playlist after 10 seconds, and the alternate plays
 
 #### Scenario: Playlist without usable streams
 - **WHEN** a station's only stream URL is a playlist that lists no usable stream URL

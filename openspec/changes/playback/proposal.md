@@ -30,7 +30,7 @@ Choices that go beyond the brief and the proposed defaults, for review:
 - **"Within a few seconds" becomes 5 seconds.** After switching from Wi-Fi to cellular, any silence lasts at most 5 seconds. After airplane mode is turned off, audio returns within 5 seconds of the phone reconnecting to a network.
 - **The details of retrying:**
   - Pressing Play starts with the primary stream. Every later round starts with the stream that played last, so a station that has fallen back to an alternate doesn't wait on a dead primary first.
-  - A playlist URL is downloaded again each time a round reaches it, and a download that fails counts as a failed stream. The stream that played last can be one that a playlist listed.
+  - A playlist URL is downloaded again each time a round reaches it, and a download that fails or takes over 10 seconds counts as a failed stream. The stream that played last can be one that a playlist listed.
   - The waits are 1, 2, 4, 8 and 16 seconds, then 30 seconds from then on.
   - The waits start over when the user plays a station, when the network changes, and once audio has played for 60 seconds. They don't start over on every reconnect, so a stream that keeps dropping right after connecting is retried less and less often, instead of every second.
   - A network change restarts the connection even when the old one still seems alive. On a switch from Wi-Fi to cellular, the old connection would otherwise hang until it timed out.
