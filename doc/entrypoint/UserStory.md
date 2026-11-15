@@ -43,7 +43,7 @@ A statement marked *(open: Qn)* depends on a question in [Open and unclear quest
    - The app builds this history itself from the track titles that the stream reports while the user listens.
    - Where a station publishes its own history (Shoutcast v2, AzuraCast, a station's own feed), the app shows that as well. A stream itself reports only the current title, and there is no standard for history.
 
-7. The user must be able to browse the station's track list and play any track if this is allowed by the station. This is a candidate to drop: a live stream can't replay earlier tracks, and only some platforms offer on-demand archives *(open: Q21)*.
+7. The user must be able to browse the station's track list and play any track if this is allowed by the station. Whether to keep it is deferred to a later decision: a live stream can't replay earlier tracks, and only some platforms offer on-demand archives *(Q21)*.
 
 8. The user must be able to record favorite tracks and save them to any of their groups, with offline playback support *(open: Q25–Q27)*.
    - "Download" in the original brief means this recording; there's no separate download.
@@ -137,7 +137,7 @@ The original open questions and where they stand:
 
 # Open and unclear questions
 
-Where a question has a proposed default, it's given after it. An answered question keeps its number and is marked Resolved, so references to it stay valid.
+Where a question has a proposed default, it's given after it. An answered question keeps its number and is marked Resolved, or Deferred when the decision is postponed, so references to it stay valid.
 
 ## Scope and platform
 
@@ -173,7 +173,7 @@ Where a question has a proposed default, it's given after it. An answered questi
 
 ## Track lists and recording
 
-- **Q21.** Keep or drop UC7 (playing earlier tracks)? *Default: drop.*
+- **Q21. Deferred:** whether to keep or drop UC7 (playing earlier tracks) is decided later.
 - **Q22.** Which station history sources does the first version support: Shoutcast v2, AzuraCast, station feeds, or only the app's own history? *Default: only the app's own history.*
 - **Q23.** How much of its own history does the app keep per station, and does it survive a restart?
 - **Q24. Resolved:** "download" in UC8 means recording the live stream.
