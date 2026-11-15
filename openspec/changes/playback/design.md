@@ -9,7 +9,7 @@ There's no code yet. The project skeleton (#9) creates a core library with no MA
 **Goals:**
 - Every playback decision that depends on neither the engine nor the platform lives in one place in the core library, and is tested on fake time.
 - The engine chosen in #8 plugs in without changing that logic.
-- Each scenario has one way of being checked: a unit test, or a check by hand on a device.
+- Every scenario is checked: by a unit test where it depends on neither the engine nor the platform, and by hand on a device where it does. Some are checked both ways, such as "Network changes", whose rounds are unit-tested and whose 5-second targets are checked on a phone.
 
 **Non-Goals:**
 - Choosing the engine and the buffer size (#8).
@@ -78,7 +78,7 @@ Alternative: Latin-1 as the fallback. Rejected: titles from Windows software oft
 ### Network changes from MAUI's `Connectivity`
 The app forwards MAUI's `Connectivity.ConnectivityChanged` event to the player on both platforms. The player then starts the waits over, with a round at once, as in "Network changes".
 
-Alternative: each platform's own network callbacks. Rejected, unless #8 finds that MAUI's event misses a switch from Wi-Fi to cellular.
+Alternative: each platform's own network callbacks. Rejected, unless #8 finds that MAUI's event misses a switch from Wi-Fi to cellular. #8 also counts how many events one such switch fires.
 
 ### Android
 - **Foreground service:** a foreground service of the media-playback type runs while a station plays, reconnects or is interrupted.
@@ -116,9 +116,17 @@ In the implementation, the app logic is pinned by unit tests in the core library
 - "Playlist URLs" and "Unsupported formats";
 - "Track titles" and "Repeated titles aren't changes";
 - "Lost connections", "Connection rounds", "Waits between rounds" and "Network changes";
+- the player's part of "Phone calls and other interruptions";
 - the sleep timer.
 
-Scenarios that need a real device are checked by hand on an Android phone and on Windows: background playback, system controls, calls, prompts, another app taking over, output changes, the 5-second targets, and the sleep timer with the screen off. The implementation PR lists each one with its result.
+Scenarios that depend on the engine or the platform are checked by hand on an Android phone and on Windows, as tasks 3 to 5 list them:
+- stream formats, plain http, server errors and login pages, titles from real streams, HLS segments, and buffered audio;
+- background playback and system controls;
+- interruptions, prompts, another app taking over, and output changes;
+- the 5-second network targets;
+- the sleep timer with the screen off and during a call.
+
+Each implementation PR lists each one with its result.
 
 This departs from the `neradio-surgical-change` rule that every scenario is pinned by a test, so the PR calls it out. Alternative: Android device tests on an emulator in CI. Rejected for these scenarios: an emulator doesn't reproduce power saving, calls or real network switches, which is also why #8 uses a real phone.
 
@@ -127,6 +135,7 @@ This departs from the `neradio-surgical-change` rule that every scenario is pinn
 - [Some phone makers' battery savers kill foreground services despite Android's rules] → #8 runs on the owner's own phone. If it happens there, a later change guides the user to exempt the app.
 - [Android ends the app a while after a stop in the background] → The headset buttons no longer play the station until the user opens the app. Accepted.
 - [MAUI's connectivity event can fire for a change that doesn't affect the connection in use, such as a cellular network appearing while on Wi-Fi] → The app reconnects needlessly. The buffer usually hides it, so this is accepted.
+- [One switch from Wi-Fi to cellular fires several connectivity events] → Each one abandons the round under way, which delays the reconnect. If #8 shows this, the app forwards only the events that change the network access or the connection profiles.
 - [A dead primary that drops packets instead of refusing the connection] → Starting can take 10 seconds before the alternate is tried. Accepted, so that slow but working streams don't fail.
 - [Stations that send Cyrillic titles in Windows-1251] → The titles are garbled under the Windows-1252 fallback. A later change could pick the fallback from the station's `language`.
 - [The engine reports an HTTP error or a web page as a format it can't play] → A working stream is skipped until playback stops. #8 checks it. If the engine can't tell them apart, the adapter reads the response's status and content type itself.
