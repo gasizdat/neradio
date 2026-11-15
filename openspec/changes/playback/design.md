@@ -43,6 +43,11 @@ The seam lets the player open a new connection while the old one's buffered audi
 
 Alternative: call the engine directly. Rejected: the logic couldn't be tested without the network, and a change of engine after #8 would touch it.
 
+### Unsupported means audio the engine can't decode
+A skipped stream isn't tried again until playback stops, so the adapter reports "the format isn't supported" only for audio the engine can't decode. An HTTP error status, such as a 404 while a station's server restarts, and a response that isn't audio, such as a Wi-Fi login page, are reported as failed connections, and the rounds go on. #8 checks how the engine tells them apart.
+
+Alternative: try skipped streams again after a network change, for login pages. Rejected: once web pages count as failed connections, whether a format can be played doesn't depend on the network.
+
 ### One 10-second limit for stalls and for attempts
 Q29's 10 seconds without data counts a playing connection as stalled. The same limit also fails a connection attempt that hasn't produced audio data. This one rule bounds the time a round spends on a dead primary.
 
@@ -90,6 +95,7 @@ Alternative: each platform's own network callbacks. Rejected, unless #8 finds th
 ### What #8 checks, and how the rest is verified
 The engine test checks by hand on the phone what depends on the engine. These are the scenarios of:
 - "Stream formats" and "Plain-http streams";
+- "Server answers with an error" and "Wi-Fi login page" of "Unsupported formats";
 - "Track titles", that titles arrive;
 - "Lost connections" and "Network changes";
 - "Buffered audio while reconnecting";
@@ -114,6 +120,7 @@ This departs from the `neradio-surgical-change` rule that every scenario is pinn
 - [MAUI's connectivity event can fire for a change that doesn't affect the connection in use, such as a cellular network appearing while on Wi-Fi] → The app reconnects needlessly. The buffer usually hides it, so this is accepted.
 - [A dead primary that drops packets instead of refusing the connection] → Starting can take 10 seconds before the alternate is tried. Accepted, so that slow but working streams don't fail.
 - [Stations that send Cyrillic titles in Windows-1251] → The titles are garbled under the Latin-1 fallback. A later change could pick the fallback from the station's `language`.
+- [The engine reports an HTTP error or a web page as a format it can't play] → A working stream is skipped until playback stops. #8 checks it. If the engine can't tell them apart, the adapter reads the response's status and content type itself.
 - [A playlist URL without a `.pls` or `.m3u` extension] → It goes to the engine as a stream, fails as an unsupported format, and is skipped. Accepted as rare: catalogs usually list resolved stream URLs.
 - [The engine can't switch from the old connection's buffer without a gap] → Short drops cause a short silence. If #8 shows this, the app feeds the audio to the output itself, at the cost of more code.
 - [A title arrives when its data is downloaded, ahead of the audio by up to the buffer's length] → The shown title changes a few seconds early. Recording (#13, Q26) decides whether to delay it.

@@ -78,7 +78,7 @@ A stream URL whose path ends in `.pls`, `.m3u` or `.m3u8` SHALL be read as a pla
 - **THEN** the app treats it as a stream that failed to connect and keeps retrying
 
 ### Requirement: Unsupported formats
-A stream in a format the app can't play SHALL be skipped until playback stops. When every stream of the station has been skipped, playback SHALL stop, and the app SHALL tell the user that the station's format isn't supported.
+A stream whose server sends audio in a format the app can't play SHALL be skipped until playback stops. An HTTP error status, or a response that isn't audio, such as a web page, SHALL count as a failed connection instead, and SHALL NOT make the stream skipped. When every stream of the station has been skipped, playback SHALL stop, and the app SHALL tell the user that the station's format isn't supported.
 
 #### Scenario: Primary in an unsupported format
 - **WHEN** a station's primary stream is in a format the app can't play, and its alternate is MP3
@@ -87,6 +87,14 @@ A stream in a format the app can't play SHALL be skipped until playback stops. W
 #### Scenario: No playable stream
 - **WHEN** every stream of a station is in a format the app can't play
 - **THEN** playback stops, the app tells the user the format isn't supported, and it doesn't retry
+
+#### Scenario: Server answers with an error
+- **WHEN** a station's only stream answers with an HTTP error, such as 404 while the station's server restarts
+- **THEN** the app counts it as a failed connection and keeps retrying, and the station plays once the server sends audio again
+
+#### Scenario: Wi-Fi login page
+- **WHEN** the phone is on a Wi-Fi network that answers every request with its login page
+- **THEN** the app counts each attempt as a failed connection and keeps retrying, and the station plays after the user logs in
 
 ### Requirement: Track titles
 While a station plays, the app SHALL show the track title the stream reports: ICY metadata in MP3 and AAC streams, and comments in Ogg streams. Each title that differs from the current one SHALL count as a title change. A title that's empty after trimming SHALL count as no title.

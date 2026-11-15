@@ -19,8 +19,9 @@ Implementation starts once the engine is chosen (#8) and the project skeleton (#
 
 ## 3. Engine adapter
 
-- [ ] 3.1 Implement the engine seam with the engine chosen in #8. That covers opening streams, the data, end, failure and title events, the volume, and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
+- [ ] 3.1 Implement the engine seam with the engine chosen in #8. That covers opening streams; the data, end, failure, unsupported-format and title events, with HTTP errors and web pages reported as failures; the volume; and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
   - "Stream formats" and "Plain-http streams";
+  - "Server answers with an error" and "Wi-Fi login page" of "Unsupported formats";
   - "Track titles", with real ICY and Ogg streams;
   - "HLS segments" and "Stalled HLS stream";
   - "Buffered audio while reconnecting".

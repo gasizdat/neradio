@@ -33,7 +33,7 @@ Choices that go beyond the brief and the proposed defaults, for review:
   - The waits start over when the user plays a station, when the network changes, and once audio has played for 60 seconds. They don't start over on every reconnect, so a stream that keeps dropping right after connecting is retried less and less often, instead of every second.
   - A network change restarts the connection even when the old one still seems alive. On a switch from Wi-Fi to cellular, the old connection would otherwise hang until it timed out.
   - HLS streams get their data a segment at a time, so for them the 10 seconds without data count on top of the playlist's target duration.
-- **A format the app can't play ends the retries.** Retrying a stream in an unsupported format can't help. Such a stream is skipped, and if no stream of the station can be played, playback stops and the app says why. This is the one exception to "never gives up".
+- **A format the app can't play ends the retries.** Retrying a stream in an unsupported format can't help. Such a stream is skipped, and if no stream of the station can be played, playback stops and the app says why. This is the one exception to "never gives up". Only audio the app can't decode counts: an HTTP error, or a web page such as a Wi-Fi login page, is a failed connection, and the retries go on.
 - **Losing audio focus and the headphones, beyond Q31:**
   - When another app starts playing music, the app stops and doesn't start again on its own.
   - When headphones are unplugged or a Bluetooth audio device disconnects, playback stops on Android rather than switching to the speaker. On Windows it carries on with the new default output device, as Windows apps usually do.
