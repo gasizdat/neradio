@@ -16,9 +16,11 @@ OpenSpec.
 
 ## Writing code
 
-Before changing product source, follow
-[.agents/skills/surgical-change/SKILL.md](.agents/skills/surgical-change/SKILL.md) (the
-`surgical-change` skill). The conventions it depends on:
+Before changing product source, follow the `surgical-change` skill
+([.agents/skills/surgical-change/SKILL.md](.agents/skills/surgical-change/SKILL.md)) together with
+`neradio-surgical-change`
+([.agents/skills/neradio-surgical-change/SKILL.md](.agents/skills/neradio-surgical-change/SKILL.md)),
+which adds this repo's specifics. The conventions they depend on:
 
 - **Minimalist.** Smallest diff that fully solves the problem, at the true source of the behavior.
   No speculative configuration, abstractions, or extension points.
@@ -32,6 +34,14 @@ Before changing product source, follow
   on sibling methods are boilerplate — cut them.
 - **Match the surrounding file**: member grouping and ordering, naming, idiom. Never interleave
   access levels.
+
+## Dependencies
+
+The app is MIT-licensed; these apply from the first design proposal, not just when coding.
+
+- No GPL-licensed dependencies while BASS (closed source) is still an audio-engine candidate — the
+  two can't ship in one app.
+- Never commit BASS binaries to the repo; fetch them at build time.
 
 ## Commits
 

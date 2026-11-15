@@ -41,3 +41,4 @@ Each of these beats its heavier alternative unless proven insufficient:
 - Tests: extend the existing test class for the touched component, reusing its harness helpers and mirroring the style of neighboring tests. Pin each new behavior and each prevented regression (e.g. an assertion that a call must NOT happen).
 - Build and run the project's canonical CI entry point (solution filter, make target, npm script) rather than an ad-hoc subset; then run the affected test classes first, then the full suite.
 - One focused branch and commit per logical change; never push without being asked.
+- If the repo has a skill extending this one with project specifics (e.g. `neradio-surgical-change`), load it too.
