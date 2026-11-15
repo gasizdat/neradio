@@ -87,7 +87,7 @@ A statement marked *(open: Qn)* depends on a question in [Open and unclear quest
    - It's driven by frequency data from the app's own audio processing, at 30 or more frames per second.
    - It needs no microphone permission. Android's system visualizer requires one, so it can't be used.
 
-The features below were missing from the original brief *(open: Q3)*.
+The features below were missing from the original brief.
 
 9. The user must be able to search and filter stations.
 
@@ -143,7 +143,7 @@ Where a question has a proposed default, it's given after it. An answered questi
 
 - **Q1. Resolved:** Linux is out of scope, so the framework stays MAUI.
 - **Q2.** Is sync between devices (groups, overrides, playlists) in scope? *Default: not in the first version.*
-- **Q3.** Do you want Features 9–12 (search and filter, sleep timer, background playback, stream formats), which the original brief didn't list?
+- **Q3. Resolved:** Features 9–12 (search and filter, sleep timer, background playback, stream formats) are in scope.
 - **Q4. Resolved:** no income is planned, which keeps the app within BASS's free non-commercial license.
 - **Q5.** Do BASS's redistribution terms allow shipping it in a free app on Google Play and the Microsoft Store? Read the terms on un4seen's site before the first release.
 - **Q6.** Where will the app be distributed: Google Play and the Microsoft Store only, or also direct downloads (GitHub Releases, an APK)? F-Droid is out while BASS is the engine.
