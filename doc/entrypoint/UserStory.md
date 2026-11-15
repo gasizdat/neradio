@@ -12,15 +12,15 @@ A statement marked *(open: Qn)* depends on a question in [Open and unclear quest
 - **Station catalog**: the predefined station list that the app ships with and keeps up to date (Features 1–2).
 - **Group**: a named set of stations and recorded tracks chosen by the user, such as Favorites.
 - **Playlist**: a named, ordered list of stations and recorded tracks that the app plays one after another (UC5).
-- **Override**: the user's own name or logo for a station or group. It's stored separately from the list the station came from, keyed by the station's or group's identity *(open: Q10, Q11)*.
+- **Override**: the user's own name or logo for a station or group. It's stored separately from the list the station came from, keyed by the station's or group's identity.
 
 ## Main Use Cases
 
-1. The user must be able to load additional radio station lists *(open: Q9, Q10)*.
+1. The user must be able to load additional radio station lists *(open: Q9)*.
 
 2. The user must be able to export and import radio station lists. A station that already exists is skipped, not imported again *(open: Q12)*.
    - Two entries are the same station when their station IDs match.
-   - An entry without an ID matches another when their normalized stream URLs match *(open: Q11)*.
+   - An entry without an ID matches another when their normalized stream URLs match.
 
 3. The user must be able to create custom radio station groups from different lists. A group can also hold recorded tracks (UC8).
    - 3.1. The default group is **Favorites** *(open: Q18)*.
@@ -156,8 +156,8 @@ Where a question has a proposed default, it's given after it. An answered questi
 ## Station lists and catalog
 
 - **Q9.** Where do additional lists (UC1) come from: a local file, a URL, or both? *Default: both.*
-- **Q10.** What's the station list format, and which fields does a station have? *Default: JSON with an ID, name, logo URL, primary and alternate stream URLs, and optional genre, country, language and bitrate. One format for the catalog, import and export.*
-- **Q11.** When entries have no ID, which URL differences still count as the same station? *Default: ignore http vs. https, letter case in the host name and a trailing slash. A different host (a mirror) or a different access token makes it a different station.*
+- **Q10. Resolved (#3):** one JSON format, with a format version, for the catalog, import and export. A station has a name, one or more stream URLs (primary first), and optionally an ID, a logo URL, genres, country, language and bitrate. The ID is a UUID; lists from elsewhere may leave it out.
+- **Q11. Resolved (#3):** http vs. https, the host's letter case, an explicit default port and a trailing slash don't count. Any other difference, such as a mirror's host or another access token, makes a different station.
 - **Q12.** Does an export carry only stations, or also the user's groups, overrides and playlists?
 - **Q13.** What happens to a station the user has grouped when it disappears from the catalog? *Default: it stays in the user's groups, marked as no longer in the catalog.*
 - **Q14.** How often does the app check for catalog updates? *Default: at startup, at most once a day.*
