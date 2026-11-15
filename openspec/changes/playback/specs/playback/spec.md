@@ -124,7 +124,7 @@ While a station plays, the app SHALL show the track title the stream reports: IC
 - **THEN** the app shows no title and reports no title changes
 
 ### Requirement: Repeated titles aren't changes
-A title equal to the last title that wasn't empty SHALL NOT count as a title change. That includes a title that follows an empty one, and the first title the stream reports after a reconnect.
+A title equal to the last title that wasn't empty SHALL NOT count as a title change. That includes a title that follows an empty one, and the first title the stream reports after a reconnect or after an interruption. The app SHALL forget the last title when the user plays a station.
 
 #### Scenario: Stream repeats its title
 - **WHEN** a stream reports the same title several times in a row
@@ -137,6 +137,10 @@ A title equal to the last title that wasn't empty SHALL NOT count as a title cha
 #### Scenario: Same title after a reconnect
 - **WHEN** the app reconnects to a station, and the stream reports the title it reported before the connection was lost
 - **THEN** that doesn't count as a title change
+
+#### Scenario: Same title after the user plays the station again
+- **WHEN** the user stops a station whose last title was `Artist A - Song 1`, plays it again, and the stream reports `Artist A - Song 1`
+- **THEN** that counts as a title change
 
 ### Requirement: Lost connections
 The app SHALL count a connection as lost when it fails, when the stream ends, or when no data has arrived for 10 seconds. An HLS stream receives its data a segment at a time, so its limit SHALL be 10 seconds plus its playlist's target duration. A connection attempt that gets no audio data within 10 seconds SHALL count as failed.
@@ -162,7 +166,7 @@ The app SHALL count a connection as lost when it fails, when the stream ends, or
 - **THEN** the app counts the connection as lost and reconnects
 
 ### Requirement: Connection rounds
-The app SHALL connect in rounds. A round tries each stream URL of the station that hasn't been skipped once, without waiting between them, and ends when a stream plays or every stream has failed. When the user plays a station, the round starts with the primary stream. Every later round starts with the stream that played last, even one that a playlist listed. The others follow in the station's order. While reconnecting, the app SHALL show that it's reconnecting.
+The app SHALL connect in rounds. A round tries each stream of the station that hasn't been skipped, once and without waits, until one plays or all have failed. When the user plays a station, or it plays again after an interruption, the round starts with the primary stream. Later rounds start with the stream that played last, even one a playlist listed. The others follow in the station's order. While reconnecting, the app SHALL show that it's reconnecting.
 
 #### Scenario: Dead primary when starting
 - **WHEN** the user plays a station whose primary stream doesn't connect and whose alternate does
@@ -252,7 +256,7 @@ The system media controls SHALL show the station's name and logo and the current
 - **THEN** Windows' media controls show the station's name and the new title
 
 ### Requirement: Phone calls and other interruptions
-On Android, when a phone call, or anything else that takes the audio for a while, such as an alarm or a voice assistant, starts while a station plays or the app connects to it, the app SHALL stop. When the interruption ends, the app SHALL play the station again, as if the user had pressed Play, unless the user stopped playback in the meantime. On Windows nothing is required: the system handles calls.
+On Android, when a phone call, or anything else that takes the audio for a while, such as an alarm or a voice assistant, starts while a station plays or the app connects to it, the app SHALL stop. When the interruption ends, the app SHALL play the station again, unless the station was stopped in the meantime for any reason, such as by the user or by unplugged headphones. On Windows nothing is required: the system handles calls.
 
 #### Scenario: Incoming call
 - **WHEN** a phone call starts while a station plays on Android
@@ -260,6 +264,10 @@ On Android, when a phone call, or anything else that takes the audio for a while
 
 #### Scenario: Stopped during a call
 - **WHEN** a phone call stops playback on Android, and the user stops playback before the call ends
+- **THEN** the station doesn't play when the call ends
+
+#### Scenario: Headphones unplugged during a call
+- **WHEN** a phone call stops playback on Android, and the headphones are unplugged before the call ends
 - **THEN** the station doesn't play when the call ends
 
 ### Requirement: Short prompts from other apps

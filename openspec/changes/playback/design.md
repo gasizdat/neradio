@@ -26,7 +26,7 @@ One player component in the core library owns all of this:
 - track titles;
 - the sleep timer.
 
-The platform code reports each stop by its kind: the user's, an interruption, or another stop by the system, such as another app taking over. Only the user's stop cancels the sleep timer, and only an interruption ends with the station playing again.
+The platform code reports each stop by its kind: the user's, an interruption, or another stop by the system, such as another app taking over. Only the user's stop cancels the sleep timer, and only an interruption ends with the station playing again. Any stop during an interruption, including the sleep timer running out, ends it without playing again. Playing again keeps the last title, as a reconnect does, so the same title isn't a change after every call.
 
 It takes time from .NET's `TimeProvider`. Tests then run on a fake one, and the 30-second waits and the 30-minute timer take no real time. The fake comes from `Microsoft.Extensions.TimeProvider.Testing` (MIT), a dependency of the test project only.
 

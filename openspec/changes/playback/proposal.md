@@ -24,7 +24,7 @@ Choices that go beyond the brief and the proposed defaults, for review:
 
 - **Track titles are in this change.** The stream's current title is shown, and each new title counts as a title change. Playlists (UC5), track history (UC6) and recording (UC8) all act on title changes, and the engine test checks them, but no issue covered them.
   - Only titles carried in the stream itself are read: ICY metadata in MP3 and AAC streams, and comments in Ogg streams. HLS streams carry titles in no single standard way, so an HLS station counts as one that reports no titles, which UC5 already allows for.
-  - A title that repeats the current one isn't a change, even right after a reconnect. Otherwise every reconnect would split a recording or add a duplicate to the history.
+  - A title that repeats the current one isn't a change, even right after a reconnect or a call. Otherwise every reconnect would split a recording or add a duplicate to the history. The last title is forgotten only when the user plays a station.
   - An empty title hides the shown title, but isn't a change. The next title is compared with the last one that wasn't empty, so a blank followed by the same title isn't a change either.
 - **How the formats are read.** "Ogg/Opus" in Feature 12 is read as both Ogg Vorbis and Opus. AAC includes HE-AAC, which many low-bitrate stations use. HLS means streams with AAC audio.
 - **"Within a few seconds" becomes 5 seconds.** After switching from Wi-Fi to cellular, any silence lasts at most 5 seconds. After airplane mode is turned off, audio returns within 5 seconds of the phone reconnecting to a network.
@@ -37,7 +37,7 @@ Choices that go beyond the brief and the proposed defaults, for review:
   - HLS streams get their data a segment at a time, so for them the 10 seconds without data count on top of the playlist's target duration.
 - **A format the app can't play ends the retries.** Retrying a stream in an unsupported format can't help. Such a stream is skipped, and if no stream of the station can be played, playback stops and the app says why. This is the one exception to "never gives up". Only audio the app can't decode counts: an HTTP error, or a web page such as a Wi-Fi login page, is a failed connection, and the retries go on.
 - **Losing audio focus and the headphones, beyond Q31:**
-  - Anything else that takes the audio for a while, such as an alarm or a voice assistant, is handled like a call. After it, the station plays again as if the user had pressed Play: from the primary stream, with the waits started over.
+  - Anything else that takes the audio for a while, such as an alarm or a voice assistant, is handled like a call. After it, the station plays again from the primary stream, with the waits started over, unless something else stopped it in the meantime.
   - When another app starts playing music, the app stops and doesn't start again on its own.
   - When headphones are unplugged or a Bluetooth audio device disconnects, playback stops on Android rather than switching to the speaker. On Windows it carries on with the new default output device, as Windows apps usually do.
 - **Only the user cancels the sleep timer,** by cancelling it or by stopping playback. Stops the user didn't make keep it running, such as a stop for a call, another app taking over, or unplugged headphones. Switching to another station keeps it too.
