@@ -59,7 +59,7 @@ The app SHALL play stream URLs and playlist URLs that use plain http, on Android
 - **THEN** it plays
 
 ### Requirement: Playlist URLs
-A stream URL whose path ends in `.pls`, `.m3u` or `.m3u8` SHALL be read as a playlist, unless it's an HLS playlist. The app SHALL use the stream URLs the playlist lists, in their order, in place of the playlist URL. A playlist that lists no usable stream URL SHALL count as a stream that failed to connect.
+A stream URL whose path ends in `.pls`, `.m3u` or `.m3u8` SHALL be read as a playlist, unless it's an HLS playlist. The app SHALL download the playlist each time a round reaches it, and SHALL try the stream URLs it lists, in their order, in place of the playlist URL. A playlist that can't be downloaded, or that lists no usable stream URL, SHALL count as a stream that failed to connect.
 
 #### Scenario: PLS playlist
 - **WHEN** a station's stream URL is a `.pls` file listing two stream URLs, and the first doesn't connect
@@ -73,9 +73,17 @@ A stream URL whose path ends in `.pls`, `.m3u` or `.m3u8` SHALL be read as a pla
 - **WHEN** a station's stream URL ends in `.m3u8` and is an HLS playlist
 - **THEN** the app plays it as an HLS stream
 
+#### Scenario: Playlist can't be downloaded
+- **WHEN** a station's only stream URL is a playlist, and downloading it fails
+- **THEN** the app treats it as a stream that failed to connect and keeps retrying
+
 #### Scenario: Playlist without usable streams
 - **WHEN** a station's only stream URL is a playlist that lists no usable stream URL
 - **THEN** the app treats it as a stream that failed to connect and keeps retrying
+
+#### Scenario: Lost connection on a stream from a playlist
+- **WHEN** a station plays the second stream its `.pls` playlist lists, and that connection is lost
+- **THEN** the next round tries that stream first, and downloads the playlist only if that stream fails
 
 ### Requirement: Unsupported formats
 A stream whose server sends audio in a format the app can't play SHALL be skipped until playback stops. An HTTP error status, or a response that isn't audio, such as a web page, SHALL count as a failed connection instead, and SHALL NOT make the stream skipped. When every stream of the station has been skipped, playback SHALL stop, and the app SHALL tell the user that the station's format isn't supported.
@@ -150,7 +158,7 @@ The app SHALL count a connection as lost when it fails, when the stream ends, or
 - **THEN** the app counts the connection as lost and reconnects
 
 ### Requirement: Connection rounds
-The app SHALL connect in rounds. A round tries each stream URL of the station that hasn't been skipped once, without waiting between them, and ends when a stream plays or every stream has failed. When the user plays a station, the round starts with the primary stream. Every later round starts with the stream that played last. The others follow in the station's order. While reconnecting, the app SHALL show that it's reconnecting.
+The app SHALL connect in rounds. A round tries each stream URL of the station that hasn't been skipped once, without waiting between them, and ends when a stream plays or every stream has failed. When the user plays a station, the round starts with the primary stream. Every later round starts with the stream that played last, even one that a playlist listed. The others follow in the station's order. While reconnecting, the app SHALL show that it's reconnecting.
 
 #### Scenario: Dead primary when starting
 - **WHEN** the user plays a station whose primary stream doesn't connect and whose alternate does

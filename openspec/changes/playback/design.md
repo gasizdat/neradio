@@ -58,9 +58,11 @@ For HLS, the limit is 10 seconds plus the playlist's target duration, since data
 Alternative: a separate, shorter connect timeout. Rejected: a slow but working stream would then fail.
 
 ### Playlist URLs resolved in the core library, by extension
-The player downloads a URL whose path ends in `.pls`, `.m3u` or `.m3u8` with `HttpClient`, with a small size cap, and parses it:
+The player downloads a URL whose path ends in `.pls`, `.m3u` or `.m3u8` with `HttpClient`, with a small size cap, each time a round reaches it, and parses it:
 - PLS: the `FileN=` entries, in order of N;
 - M3U: the lines that aren't comments.
+
+A playlist isn't kept between rounds, and a download that fails counts as a stream that failed to connect. The stream that played last is remembered by its own URL, so the next round can start with it without downloading the playlist again.
 
 An `.m3u8` with `#EXT-X-` tags is HLS, and its URL goes to the engine as a stream. Every other URL goes straight to the engine.
 
@@ -126,7 +128,7 @@ This departs from the `neradio-surgical-change` rule that every scenario is pinn
 - [A dead primary that drops packets instead of refusing the connection] → Starting can take 10 seconds before the alternate is tried. Accepted, so that slow but working streams don't fail.
 - [Stations that send Cyrillic titles in Windows-1251] → The titles are garbled under the Latin-1 fallback. A later change could pick the fallback from the station's `language`.
 - [The engine reports an HTTP error or a web page as a format it can't play] → A working stream is skipped until playback stops. #8 checks it. If the engine can't tell them apart, the adapter reads the response's status and content type itself.
-- [A playlist URL without a `.pls` or `.m3u` extension] → It goes to the engine as a stream, fails as an unsupported format, and is skipped. Accepted as rare: catalogs usually list resolved stream URLs.
+- [A playlist URL without a `.pls`, `.m3u` or `.m3u8` extension] → It goes to the engine as a stream, fails as an unsupported format, and is skipped. Accepted as rare: catalogs usually list resolved stream URLs.
 - [The engine can't switch from the old connection's buffer without a gap] → Short drops cause a short silence. If #8 shows this, the app feeds the audio to the output itself, at the cost of more code.
 - [A title arrives when its data is downloaded, ahead of the audio by up to the buffer's length] → The shown title changes a few seconds early. Recording (#13, Q26) decides whether to delay it.
 - [Reconnecting never gives up, with the wake lock held] → A long outage drains the battery: at most one round every 30 seconds. Accepted, following Q28; Stop and the sleep timer end it.

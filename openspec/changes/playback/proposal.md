@@ -8,7 +8,7 @@ It settles Q28 (retries), Q29 (stalled streams) and Q31 (calls and other apps' s
 
 ## What Changes
 
-- **Stream formats (Feature 12):** MP3, AAC, Ogg Vorbis, Opus and HLS; stations given as `.pls` and `.m3u` playlist URLs; and plain-http streams on both platforms.
+- **Stream formats (Feature 12):** MP3, AAC, Ogg Vorbis, Opus and HLS; stations given as `.pls`, `.m3u` and `.m3u8` playlist URLs; and plain-http streams on both platforms.
 - **One station at a time, and one meaning of "stop".** A live stream can't be paused and resumed where it left off. Stopping disconnects, and Play starts the live broadcast again. The pause button in the system controls stops too.
 - **Reconnecting (Feature 5), following Q28's and Q29's defaults:**
   - A connection error, the stream ending, or 10 seconds without data counts as a lost connection (Q29).
@@ -29,6 +29,7 @@ Choices that go beyond the brief and the proposed defaults, for review:
 - **"Within a few seconds" becomes 5 seconds.** After switching from Wi-Fi to cellular, any silence lasts at most 5 seconds. After airplane mode is turned off, audio returns within 5 seconds of the phone reconnecting to a network.
 - **The details of retrying:**
   - Pressing Play starts with the primary stream. Every later round starts with the stream that played last, so a station that has fallen back to an alternate doesn't wait on a dead primary first.
+  - A playlist URL is downloaded again each time a round reaches it, and a download that fails counts as a failed stream. The stream that played last can be one that a playlist listed.
   - The waits are 1, 2, 4, 8 and 16 seconds, then 30 seconds from then on.
   - The waits start over when the user plays a station, when the network changes, and once audio has played for 60 seconds. They don't start over on every reconnect, so a stream that keeps dropping right after connecting is retried less and less often, instead of every second.
   - A network change restarts the connection even when the old one still seems alive. On a switch from Wi-Fi to cellular, the old connection would otherwise hang until it timed out.
