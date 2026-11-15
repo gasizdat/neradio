@@ -82,8 +82,8 @@ Alternative: each platform's own network callbacks. Rejected, unless #8 finds th
 
 ### Android
 - **Foreground service:** a foreground service of the media-playback type runs while a station plays, reconnects or is interrupted.
-  - Android 12 and later let an app start a foreground service from the background only in some cases. A media button press and a tap on the notification are among them, but getting audio focus back after a call isn't. So the service stays in the foreground through an interruption.
-  - After any other stop, the service leaves the foreground, and the media session stays active, so the notification and the headset buttons can play the station again. #8's "Headset button" check confirms this on the phone.
+  - Android 12 and later let an app start a foreground service from the background only in some cases. A tap on the notification is one of them. A media button press is expected to be one too, but getting audio focus back after a call isn't. So the service stays in the foreground through an interruption.
+  - After any other stop, the service leaves the foreground, and the media session stays active, so the notification and the headset buttons can play the station again. #8 checks the headset button after a stop, with the screen off and the app in the background.
 - **Media session:** a media session drives the notification, the lock screen and headset and Bluetooth buttons. #8 picks the library for it, since its test app needs one too. It must not be GPL.
 - **Locks:** the app holds a partial wake lock and a Wi-Fi lock while playing or reconnecting, so the CPU and Wi-Fi don't sleep with the screen off.
 - **Audio focus:** the app requests audio focus when playback starts.
@@ -133,7 +133,7 @@ This departs from the `neradio-surgical-change` rule that every scenario is pinn
 ## Risks / Trade-offs
 
 - [Some phone makers' battery savers kill foreground services despite Android's rules] → #8 runs on the owner's own phone. If it happens there, a later change guides the user to exempt the app.
-- [Android ends the app a while after a stop in the background] → The headset buttons no longer play the station until the user opens the app. Accepted.
+- [Android ends the app a while after a stop in the background] → The headset buttons no longer play the station until the user opens the app, and a sleep timer that was still running is lost. Accepted.
 - [MAUI's connectivity event can fire for a change that doesn't affect the connection in use, such as a cellular network appearing while on Wi-Fi] → The app reconnects needlessly. The buffer usually hides it, so this is accepted.
 - [One switch from Wi-Fi to cellular fires several connectivity events] → Each one abandons the round under way, which delays the reconnect. If #8 shows this, the app forwards only the events that change the network access or the connection profiles.
 - [A dead primary that drops packets instead of refusing the connection] → Starting can take 10 seconds before the alternate is tried. Accepted, so that slow but working streams don't fail.
