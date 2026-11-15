@@ -11,8 +11,10 @@ OpenSpec.
 - Workflow: `openspec-explore` to think a problem through → `openspec-propose` for the proposal,
   design, delta specs and tasks → `openspec-apply-change` to implement the tasks →
   `openspec-archive-change` to fold the delta specs into `openspec/specs/`.
-- One OpenSpec change = one branch = one PR. Archive on that branch once the tasks are done, so the
-  PR carries both the code and the updated specs.
+- Work is planned as GitHub issues, and each issue gets one or more PRs. An OpenSpec change takes
+  at least two: first the proposal alone, for review, then the implementation. The PR that
+  finishes the tasks also archives the change, so `openspec/specs/` describes only what's built.
+- A proposal's PR marks the open questions it settles as Resolved in `UserStory.md`.
 
 ## Writing code
 
@@ -59,8 +61,8 @@ The app is MIT-licensed; these apply from the first design proposal, not just wh
   draft branch must never track `origin/main` (avoids accidental pushes to it).
 - Never stack a branch on an unmerged one. If a change genuinely cannot sit on `main`, discuss it
   before branching.
-- One item of work = one `drafts/ai/<slug>` branch = one PR. A sweep of the same mechanical change
-  across many call sites is the exception: one branch and PR for the whole sweep.
+- Each PR gets its own `drafts/ai/<slug>` branch and holds one item of work. A sweep of the same
+  mechanical change across many call sites is the exception: one branch and PR for the whole sweep.
 - A PR body names each issue it fixes as `Fixes #N`; `Related: #N` is only for issues it leaves
   open.
 - Never delete a `drafts/ai/*` branch, local or remote, even after it's merged — omit
