@@ -11,8 +11,10 @@ OpenSpec.
 - Workflow: `openspec-explore` to think a problem through → `openspec-propose` for the proposal,
   design, delta specs and tasks → `openspec-apply-change` to implement the tasks →
   `openspec-archive-change` to fold the delta specs into `openspec/specs/`.
-- One OpenSpec change = one branch = one PR. Archive on that branch once the tasks are done, so the
-  PR carries both the code and the updated specs.
+- Work is planned as GitHub issues, and each issue gets one or more PRs. An OpenSpec change takes
+  at least two: first the proposal alone, for review, then the implementation. The PR that
+  finishes the tasks also archives the change, so `openspec/specs/` describes only what's built.
+- A proposal's PR marks the open questions it settles as Resolved in `UserStory.md`.
 
 ## Writing code
 
