@@ -165,7 +165,7 @@ The app SHALL connect in rounds. A round tries each stream URL of the station th
 - **THEN** it shows that it's reconnecting, and the station stays the one selected
 
 ### Requirement: Waits between rounds
-The first round SHALL start at once. Each later round SHALL start after a wait of 1, 2, 4, 8 and 16 seconds, in that order, then 30 seconds for every round after that. A lost connection SHALL NOT restart this sequence. It starts over only when the user plays a station, when the network changes, or once audio has played for 60 seconds. The app SHALL keep reconnecting until playback stops.
+The first round SHALL start at once. Each later round SHALL start after a wait of 1, 2, 4, 8 and 16 seconds, in that order, then 30 seconds for every round after that. A lost connection SHALL NOT restart this sequence. It starts over only when the user plays a station, when a station plays again after an interruption, when the network changes, or once audio has played for 60 seconds. The app SHALL keep reconnecting until playback stops.
 
 #### Scenario: Every stream keeps failing
 - **WHEN** a connection is lost and every round fails
@@ -239,12 +239,16 @@ The system media controls SHALL show the station's name and logo and the current
 - **WHEN** the track title changes on Windows
 - **THEN** Windows' media controls show the station's name and the new title
 
-### Requirement: Phone calls
-On Android, the app SHALL stop for a phone call and play the station again when the call ends. On Windows nothing is required: the system handles calls.
+### Requirement: Phone calls and other interruptions
+On Android, when a phone call, or anything else that takes the audio for a while, such as an alarm or a voice assistant, starts while a station plays or the app connects to it, the app SHALL stop. When the interruption ends, the app SHALL play the station again, as if the user had pressed Play, unless the user stopped playback in the meantime. On Windows nothing is required: the system handles calls.
 
 #### Scenario: Incoming call
 - **WHEN** a phone call starts while a station plays on Android
 - **THEN** playback stops, and the station plays again when the call ends
+
+#### Scenario: Stopped during a call
+- **WHEN** a phone call stops playback on Android, and the user stops playback before the call ends
+- **THEN** the station doesn't play when the call ends
 
 ### Requirement: Short prompts from other apps
 On Android, while another app plays a short prompt, such as a navigation instruction, the app SHALL lower its volume, and restore it after the prompt. On Windows nothing is required.

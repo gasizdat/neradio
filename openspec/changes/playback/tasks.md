@@ -12,10 +12,11 @@ Implementation starts once the engine is chosen (#8) and the project skeleton (#
 - [ ] 1.3 Add network-change restarts: a network change starts the waits over, with a round at once. Verify that tests pin the round logic of "Network changes": a playing connection is dropped, a round under way is abandoned, a wait in progress is skipped, and "First round on the new network fails".
 - [ ] 1.4 Add playlist URL resolution for `.pls`, `.m3u` and `.m3u8`, telling HLS apart. Verify that tests pin every scenario of "Playlist URLs".
 - [ ] 1.5 Add track titles: ICY title parsing with the UTF-8, else Latin-1 rule, Ogg comment titles, and the check for repeated titles. Verify that tests pin every scenario of "Track titles" and "Repeated titles aren't changes".
+- [ ] 1.6 Add the kinds of stop: the user's, an interruption, and another stop by the system. When an interruption ends, the station plays again as if the user had pressed Play, unless the user stopped playback in the meantime. Verify that tests pin the player's part of "Phone calls and other interruptions": the station plays again from its primary stream with the waits started over, and doesn't play again after the user stopped it.
 
 ## 2. Sleep timer
 
-- [ ] 2.1 Add the sleep timer to the player: time left, stopping when it runs out, and cancelling. Verify that tests pin every scenario of "Setting the sleep timer" and "Cancelling the sleep timer" except "Screen off on Android".
+- [ ] 2.1 Add the sleep timer to the player: time left, stopping when it runs out, and cancelling by the user's stops only. Verify that tests pin every scenario of "Setting the sleep timer" and "Cancelling the sleep timer" except "Screen off on Android".
 
 ## 3. Engine adapter
 
@@ -28,9 +29,9 @@ Implementation starts once the engine is chosen (#8) and the project skeleton (#
 
 ## 4. Android
 
-- [ ] 4.1 Add the media-playback foreground service and the media session: the notification, the lock screen, headset and Bluetooth buttons, the wake and Wi-Fi locks, and the permissions. Verify by hand on a real phone the scenarios of "Background playback" and "System media controls", and "Screen off on Android" of the sleep timer.
+- [ ] 4.1 Add the media-playback foreground service and the media session: the notification, the lock screen, headset and Bluetooth buttons, the wake and Wi-Fi locks, and the permissions. The service stays in the foreground through an interruption, and the media session stays active after a stop. Verify by hand on a real phone the scenarios of "Background playback" and "System media controls", and "Screen off on Android" of the sleep timer.
 - [ ] 4.2 Add audio focus and the "audio becoming noisy" broadcast. Verify by hand on a real phone the scenarios of:
-  - "Phone calls" and "Short prompts from other apps";
+  - "Phone calls and other interruptions" and "Short prompts from other apps";
   - "Another app takes over";
   - "Audio output changes";
   - "Phone call" of the sleep timer.

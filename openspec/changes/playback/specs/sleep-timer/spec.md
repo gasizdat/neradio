@@ -7,7 +7,7 @@ Lets the user fall asleep to a station: playback stops on its own after a time t
 ## ADDED Requirements
 
 ### Requirement: Setting the sleep timer
-The user SHALL be able to set a sleep timer for a chosen number of minutes. While it runs, the app SHALL show the time left. When the time is up, playback SHALL stop, whether the station is playing or reconnecting.
+The user SHALL be able to set a sleep timer for a chosen number of minutes. While it runs, the app SHALL show the time left. When the time is up, playback SHALL stop, whether the station is playing or reconnecting, and a station stopped by an interruption SHALL NOT play again.
 
 #### Scenario: Timer runs out
 - **WHEN** a station plays and the user sets the sleep timer to 30 minutes
@@ -26,7 +26,7 @@ The user SHALL be able to set a sleep timer for a chosen number of minutes. Whil
 - **THEN** playback stops on time
 
 ### Requirement: Cancelling the sleep timer
-The user SHALL be able to cancel the sleep timer. When the user stops playback, the timer SHALL be cancelled too. Playing another station, or a stop for a phone call, SHALL NOT cancel it.
+The user SHALL be able to cancel the sleep timer. When the user stops playback, from the app or from the system media controls, the timer SHALL be cancelled too. A stop the user didn't make SHALL NOT cancel it: a stop for a call or another interruption, for another app taking over, for unplugged headphones, or because no stream of the station can be played. Playing another station SHALL NOT cancel it either.
 
 #### Scenario: User cancels the timer
 - **WHEN** the user cancels a running sleep timer
@@ -43,3 +43,7 @@ The user SHALL be able to cancel the sleep timer. When the user stops playback, 
 #### Scenario: Phone call
 - **WHEN** a phone call stops playback on Android while the sleep timer runs
 - **THEN** the timer keeps running, and the station plays again after the call only if the timer hasn't run out
+
+#### Scenario: Another app takes over
+- **WHEN** another app takes over the audio on Android while the sleep timer runs, and the user plays the station again before the timer runs out
+- **THEN** the timer keeps running, and the station stops when it runs out

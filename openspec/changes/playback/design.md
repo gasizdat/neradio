@@ -19,12 +19,14 @@ There's no code yet. The project skeleton (#9) creates a core library with no MA
 
 ### Playback logic in the core library
 One player component in the core library owns all of this:
-- the playback state: stopped, connecting, playing, reconnecting;
+- the playback state: stopped, connecting, playing, reconnecting, and interrupted, for a station stopped by a call or the like that plays again when it ends;
 - connection rounds, the waits between them, and stall detection;
 - restarts on network changes;
 - skipped streams;
 - track titles;
 - the sleep timer.
+
+The platform code reports each stop by its kind: the user's, an interruption, or another stop by the system, such as another app taking over. Only the user's stop cancels the sleep timer, and only an interruption ends with the station playing again.
 
 It takes time from .NET's `TimeProvider`. Tests then run on a fake one, and the 30-second waits and the 30-minute timer take no real time. The fake comes from `Microsoft.Extensions.TimeProvider.Testing` (MIT), a dependency of the test project only.
 
@@ -75,11 +77,13 @@ The app forwards MAUI's `Connectivity.ConnectivityChanged` event to the player o
 Alternative: each platform's own network callbacks. Rejected, unless #8 finds that MAUI's event misses a switch from Wi-Fi to cellular.
 
 ### Android
-- **Foreground service:** a foreground service of the media-playback type runs while a station plays or reconnects.
+- **Foreground service:** a foreground service of the media-playback type runs while a station plays, reconnects or is interrupted.
+  - Android 12 and later let an app start a foreground service from the background only in some cases. A media button press and a tap on the notification are among them, but getting audio focus back after a call isn't. So the service stays in the foreground through an interruption.
+  - After any other stop, the service leaves the foreground, and the media session stays active, so the notification and the headset buttons can play the station again. #8's "Headset button" check confirms this on the phone.
 - **Media session:** a media session drives the notification, the lock screen and headset and Bluetooth buttons. #8 picks the library for it, since its test app needs one too. It must not be GPL.
 - **Locks:** the app holds a partial wake lock and a Wi-Fi lock while playing or reconnecting, so the CPU and Wi-Fi don't sleep with the screen off.
 - **Audio focus:** the app requests audio focus when playback starts.
-  - A temporary loss, such as a call, stops playback, and the station plays again when focus returns.
+  - A temporary loss, such as a call, an alarm or a voice assistant, is an interruption: playback stops, and the station plays again when focus returns.
   - A loss that allows ducking, such as a prompt, lowers the volume.
   - A permanent loss stops playback.
 - **Output changes:** the "audio becoming noisy" broadcast stops playback.
@@ -117,6 +121,7 @@ This departs from the `neradio-surgical-change` rule that every scenario is pinn
 ## Risks / Trade-offs
 
 - [Some phone makers' battery savers kill foreground services despite Android's rules] → #8 runs on the owner's own phone. If it happens there, a later change guides the user to exempt the app.
+- [Android ends the app a while after a stop in the background] → The headset buttons no longer play the station until the user opens the app. Accepted.
 - [MAUI's connectivity event can fire for a change that doesn't affect the connection in use, such as a cellular network appearing while on Wi-Fi] → The app reconnects needlessly. The buffer usually hides it, so this is accepted.
 - [A dead primary that drops packets instead of refusing the connection] → Starting can take 10 seconds before the alternate is tried. Accepted, so that slow but working streams don't fail.
 - [Stations that send Cyrillic titles in Windows-1251] → The titles are garbled under the Latin-1 fallback. A later change could pick the fallback from the station's `language`.
