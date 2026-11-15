@@ -1,55 +1,211 @@
 # User Story
 
-As a user, I want to create a cross-platform application for listening to internet radio stations that can run at least on Windows and Android.
+As a user, I want a cross-platform application for listening to internet radio stations that runs at least on Windows and Android. Linux is out of scope.
+
+neradio is freeware with no ads, released under the MIT license. No income from it is planned: no donations and no paid tier. Rules for dependencies and licenses are in [AGENTS.md](../../AGENTS.md).
+
+A statement marked *(open: Qn)* depends on a question in [Open and unclear questions](#open-and-unclear-questions).
+
+## Terms
+
+- **Station list**: a file of radio stations. Each station has a name, a logo URL, one or more stream URLs and, in neradio's own lists, a stable station ID. A list from elsewhere may have no IDs.
+- **Station catalog**: the predefined station list that the app ships with and keeps up to date (Features 1–2).
+- **Group**: a named set of stations and recorded tracks chosen by the user, such as Favorites.
+- **Playlist**: a named, ordered list of stations and recorded tracks that the app plays one after another (UC5).
+- **Override**: the user's own name or logo for a station or group. It's stored separately from the list the station came from, keyed by the station's or group's identity *(open: Q10, Q11)*.
 
 ## Main Use Cases
 
-1. The user must be able to load additional radio station lists.
+1. The user must be able to load additional radio station lists *(open: Q9, Q10)*.
 
-2. The user must be able to export and import radio station lists. If radio stations from a new list already exist, they are ignored and are not imported again.
+2. The user must be able to export and import radio station lists. A station that already exists is skipped, not imported again *(open: Q12)*.
+   - Two entries are the same station when their station IDs match.
+   - An entry without an ID matches another when their normalized stream URLs match *(open: Q11)*.
 
-3. The user must be able to create custom radio station groups from different lists.
-   - 3.1. The default group is **Favorites**.
+3. The user must be able to create custom radio station groups from different lists. A group can also hold recorded tracks (UC8).
+   - 3.1. The default group is **Favorites** *(open: Q18)*.
    - 3.2. The same radio station can belong to multiple user groups.
-   - 3.3. When a radio station is selected, all user groups that contain it are displayed.
-   - 3.4. The user must be able to change the name and logo of any custom or built-in radio station group.
+   - 3.3. When a radio station is selected, all user groups that contain it are displayed, and the user can add it to or remove it from a group from there.
+   - 3.4. The user must be able to change the name and logo of any custom or built-in radio station group *(open: Q17)*.
 
-4. The user must be able to change the name and logo of any radio station that they added to a group.
+4. The user must be able to change the name and logo of any radio station that they added to a group *(open: Q16)*.
+   - The change is stored as an override, so updating the list the station came from doesn't overwrite it.
+   - The user can reset a station to its original name and logo.
 
-5. The user must be able to create named playlists containing radio stations and previously downloaded/recorded tracks. In this mode, the application automatically switches from one radio station to another after a pause in the broadcast or after a defined period of time.
+5. The user must be able to create named playlists containing radio stations and previously recorded tracks. The app plays the items in order and switches automatically *(open: Q20)*:
+   - from a station, when the stream reports a new track title, or after a set time;
+   - from a station that reports no titles, after the set time only;
+   - from a recorded track, when the track ends.
 
-6. The user must be able to view the radio station's track list if the station provides it.
+   The original brief switched "after a pause in the broadcast". Stations compress and crossfade their audio, so a gap that the app can detect is rare, and the title change replaces it.
 
-7. The user must be able to browse the station's track list and play any track if this is allowed by the station.
+6. The user must be able to view the radio station's track list *(open: Q22, Q23)*.
+   - The app builds this history itself from the track titles that the stream reports while the user listens.
+   - Where a station publishes its own history (Shoutcast v2, AzuraCast, a station's own feed), the app shows that as well. A stream itself reports only the current title, and there is no standard for history.
 
-8. The user must be able to download/record favorite tracks and save them to any of their groups, with offline playback support.
+7. The user must be able to browse the station's track list and play any track if this is allowed by the station. This is a candidate to drop: a live stream can't replay earlier tracks, and only some platforms offer on-demand archives *(open: Q21)*.
+
+8. The user must be able to record favorite tracks and save them to any of their groups, with offline playback support *(open: Q25–Q27)*.
+   - "Download" in the original brief means this recording; there's no separate download.
+   - Recording saves the raw stream to files, without re-encoding.
+   - The recording is split into tracks where the track title changes.
 
 ---
 
 # Main Application Features
 
-1. The application must display a predefined list of radio stations.
+1. The application must display a predefined list of radio stations: the station catalog *(open: Q15)*.
+   - The catalog lives in its own repository with its own data license, so it can be updated and contributed to without an app release.
+   - Station logos aren't bundled with the catalog or the app. The app loads them from their URLs at runtime and shows a fallback when a logo is missing or too small.
 
-2. The application must update the predefined radio station list from a known URL source (for example, a GitHub artifact).
+2. The application must update the catalog from a known URL: a GitHub release asset (`…/releases/latest/download/stations.json`) or a raw file in the catalog repository *(open: Q13, Q14)*.
+   - A GitHub Actions artifact can't be used: downloading one requires a signed-in GitHub user, even from a public repository, and artifacts expire.
+   - The app downloads the catalog only when it has changed (a conditional request, such as ETag).
+   - The user's groups, overrides and playlists survive an update.
 
-3. The application must allow the user to select a background.
+3. The application must allow the user to select a background *(open: Q34)*.
 
-4. The application must include multiple tabs/screens.
+4. The application must include multiple tabs/screens *(open: Q8, Q36)*.
+   - Screens: Browse/Search, Groups, Playlists, Recordings, Now Playing, Settings (equalizer, background, list sources).
+   - Phone layout: bottom tabs and a mini-player. Desktop layout: a side bar and a permanent player bar. Both layouts are designed from the start.
 
-5. The application must aggressively restore lost connections to radio stations.
+5. The application must aggressively restore lost connections to radio stations *(open: Q28–Q31)*.
+   - The app keeps retrying, waiting longer between attempts up to a set maximum.
+   - A stalled stream (still connected, but no data arriving) counts as a lost connection.
+   - When the network changes (Wi-Fi to cellular and back), the app reconnects at once instead of waiting for a timeout.
+   - When a station has alternate stream URLs, the app falls back to them.
+   - A buffer rides out short drops.
+   - Target: a Wi-Fi to cellular switch and an airplane-mode toggle recover within a few seconds, without user action.
 
-6. The application must display complete information about the currently playing station.
+6. The application must display complete information about the currently playing station *(open: Q32)*.
 
-7. The application must include a built-in equalizer.
+7. The application must include a built-in equalizer *(open: Q33)*.
+   - 10 bands, applied live while playing.
+   - The app processes the audio itself. Android's system equalizer can't be used, because it has a different number of bands on each device (often 5).
 
-8. The user must be able to enable a generated animated color-music visualization that changes in sync with the music.
+8. The user must be able to enable a generated animated color-music visualization that changes in sync with the music *(open: Q35)*.
+   - It's driven by frequency data from the app's own audio processing, at 30 or more frames per second.
+   - It needs no microphone permission. Android's system visualizer requires one, so it can't be used.
+
+The features below were missing from the original brief *(open: Q3)*.
+
+9. The user must be able to search and filter stations.
+
+10. The user must be able to set a sleep timer that stops playback after a chosen time.
+
+11. Playback must continue with the screen off and the app in the background, controlled from the lock screen, the notification, Bluetooth and headset buttons on Android, and the system media controls on Windows.
+
+12. The application must play:
+    - MP3, AAC, Ogg/Opus and HLS streams;
+    - stations given as .pls and .m3u playlist URLs;
+    - plain-http streams. Many stations are http-only, and Android blocks plain http by default, so the app must allow it explicitly.
 
 ---
 
-# Open Questions
+# Decisions
 
-1. Programming language (C# or TypeScript).
-2. Framework selection (MAUI, Electron, or self-hosted Web App).
-3. Detailed specification and OpenSpec evaluation.
-4. Application design and HTML concept demo.
-5. Project naming and GitHub repository registration.
+The original open questions and where they stand:
+
+1. **Programming language: C#.** A working choice until the audio-engine test below.
+
+2. **Framework: .NET MAUI.** A working choice until the audio-engine test. Linux is out of scope, so Avalonia, the alternative that supports it, isn't needed.
+   - Electron is ruled out: it doesn't run on Android.
+   - A self-hosted web app is ruled out. Many streams send no CORS headers, which leaves the equalizer and visualizer silent. A browser can't read the track titles embedded in a stream, so there would be no titles, history, title-based switching or recording splits. An https page can't play http streams. And Android needs native code for background playback anyway.
+
+3. **Specification: OpenSpec**, set up in `openspec/`. This file stays the brief; the requirements are written as OpenSpec specs in `openspec/specs/`.
+
+4. **Design and HTML concept demo: open** *(open: Q8, Q36)*.
+
+5. **Naming and repository: neradio**, at `github.com/gasizdat/neradio` *(open: Q37–Q39)*.
+
+**Audio engine: open** *(open: Q7)*. Every audio feature above needs direct access to the stream's bytes and audio samples, so the engine decides more than the UI framework does.
+
+- BASS (through ManagedBass) is the first candidate. It's built for internet radio, and its free non-commercial license fits an app with no ads and no income. It's closed source, so the app can't go on F-Droid.
+- The alternatives are LibVLCSharp, or a native engine per platform (Media3/ExoPlayer on Android, Media Foundation or NAudio on Windows).
+- Each candidate gets a 2–3 day test on a real Android device; an emulator doesn't reproduce power saving or real network changes. It passes when it delivers:
+  - every stream format in Feature 12;
+  - track-title changes as events (UC5, UC6, UC8);
+  - 30+ minutes of background playback with working controls (Feature 11);
+  - network recovery within a few seconds (Feature 5);
+  - a live 10-band equalizer (Feature 7);
+  - frequency data at 30+ fps without the microphone permission (Feature 8);
+  - raw-stream recording split at title changes (UC8).
+
+  Whatever the engine fails, the app has to build itself.
+
+---
+
+# Open and unclear questions
+
+Where a question has a proposed default, it's given after it. An answered question keeps its number and is marked Resolved, so references to it stay valid.
+
+## Scope and platform
+
+- **Q1. Resolved:** Linux is out of scope, so the framework stays MAUI.
+- **Q2.** Is sync between devices (groups, overrides, playlists) in scope? *Default: not in the first version.*
+- **Q3.** Do you want Features 9–12 (search and filter, sleep timer, background playback, stream formats), which the original brief didn't list?
+- **Q4. Resolved:** no income is planned, which keeps the app within BASS's free non-commercial license.
+- **Q5.** Do BASS's redistribution terms allow shipping it in a free app on Google Play and the Microsoft Store? Read the terms on un4seen's site before the first release.
+- **Q6.** Where will the app be distributed: Google Play and the Microsoft Store only, or also direct downloads (GitHub Releases, an APK)? F-Droid is out while BASS is the engine.
+
+## Audio engine and UI
+
+- **Q7.** Which audio engine? It's decided by the engine test in Decisions: BASS first, then LibVLCSharp or native engines.
+- **Q8.** MAUI with XAML, or MAUI Blazor Hybrid? Blazor Hybrid lets the HTML concept demo become the real UI.
+
+## Station lists and catalog
+
+- **Q9.** Where do additional lists (UC1) come from: a local file, a URL, or both? *Default: both.*
+- **Q10.** What's the station list format, and which fields does a station have? *Default: JSON with an ID, name, logo URL, primary and alternate stream URLs, and optional genre, country, language and bitrate. One format for the catalog, import and export.*
+- **Q11.** When entries have no ID, which URL differences still count as the same station? *Default: ignore http vs. https, letter case in the host name and a trailing slash. A different host (a mirror) or a different access token makes it a different station.*
+- **Q12.** Does an export carry only stations, or also the user's groups, overrides and playlists?
+- **Q13.** What happens to a station the user has grouped when it disappears from the catalog? *Default: it stays in the user's groups, marked as no longer in the catalog.*
+- **Q14.** How often does the app check for catalog updates? *Default: at startup, at most once a day.*
+- **Q15.** What are the catalog repository's name, its initial source of stations, and its data license? CC0 fits a list you compile yourself; a list taken from a source such as Radio Browser keeps that source's terms.
+
+## Groups, overrides and playlists
+
+- **Q16.** Does renaming a station apply everywhere, or only in the group where the user renamed it? *Default: everywhere.*
+- **Q17.** Which groups are built in besides Favorites (3.4)? Are catalog categories, such as genre or country, groups?
+- **Q18.** Can Favorites be deleted? *Default: no; it can only be renamed and given a logo.*
+- **Q19. Resolved:** groups hold both stations and recorded tracks.
+- **Q20.** How does a playlist switch? Does it switch on every title change or after several tracks, is the time limit set per playlist or per item, and does it loop at the end? *Default: on every title change, one time limit per playlist, loops.*
+
+## Track lists and recording
+
+- **Q21.** Keep or drop UC7 (playing earlier tracks)? *Default: drop.*
+- **Q22.** Which station history sources does the first version support: Shoutcast v2, AzuraCast, station feeds, or only the app's own history? *Default: only the app's own history.*
+- **Q23.** How much of its own history does the app keep per station, and does it survive a restart?
+- **Q24. Resolved:** "download" in UC8 means recording the live stream.
+- **Q25.** Can the app record a station other than the one playing, or record on a schedule? *Default: only the station playing.*
+- **Q26.** A title change doesn't fall exactly on the track boundary, so a recorded track can start or end a few seconds off. Is that acceptable, or does the user need to trim tracks?
+- **Q27.** Where are recordings stored: in the app's private storage, or in a folder the user can see, such as Music?
+
+## Reconnecting (Feature 5)
+
+- **Q28.** How soon is the first retry, what's the longest wait between retries, and does the app ever give up? *Default: retry at once, back off to at most 30 seconds, never give up until the user stops playback.*
+- **Q29.** How long without data counts as a stalled stream? *Default: 10 seconds.*
+- **Q30.** How big is the buffer? A bigger one rides out longer drops but delays starting and switching stations. Set it from the engine test.
+- **Q31.** What happens during a phone call, and when another app plays sound (navigation prompts)? *Default: pause for a call and resume after it; lower the volume for a short prompt.*
+
+## Player and appearance
+
+- **Q32.** What does "complete information" (Feature 6) include? *Default: name, logo, current track title, stream format and bitrate, genre and country from the catalog, and the groups that contain the station.*
+- **Q33.** Is the equalizer global or per station, and does it have presets? *Default: global, with presets.*
+- **Q34.** What can a background (Feature 3) be: built-in presets, the user's own images, or both? Is there one for the whole app, or one per screen or station? *Default: both kinds, one for the whole app.*
+- **Q35.** Does the visualization have one style or several? *Default: a few styles. It runs only while visible, to save battery.*
+
+## Design
+
+- **Q36.** The HTML concept demo isn't built yet. It should settle:
+  - how the station view shows the groups that contain the station (3.3), with quick add and remove;
+  - how renamed stations are shown, and how they're reset;
+  - the fallback for missing or tiny station logos;
+  - how stations and recorded tracks are mixed in the playlist editor.
+
+## Naming, release and builds
+
+- **Q37.** Neradio or NeRadio? The spelling appears in namespaces and the store listing.
+- **Q38.** Which Android application ID? It can't change after the first Google Play upload. *Default: `io.github.gasizdat.neradio`.*
+- **Q39.** Is the name free on Google Play, in the Microsoft Store and as a domain (neradio.app or .com)? Check before the first store upload.
+- **Q40.** Should CI build the app for both Windows and Android from the first code change? *Default: yes.*
