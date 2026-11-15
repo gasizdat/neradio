@@ -9,7 +9,7 @@ Implementation starts once the engine is chosen (#8) and the project skeleton (#
   - "One station at a time" and "Stopping a live stream";
   - "Lost connections" and "Connection rounds";
   - "Waits between rounds" and "Unsupported formats".
-- [ ] 1.3 Add network-change restarts: a network change starts the next round at once, and the later waits keep their sequence. Verify that tests pin the round logic of "Network changes": a playing connection is dropped, a round under way is abandoned, and a wait in progress is skipped.
+- [ ] 1.3 Add network-change restarts: a network change starts the waits over, with a round at once. Verify that tests pin the round logic of "Network changes": a playing connection is dropped, a round under way is abandoned, a wait in progress is skipped, and "First round on the new network fails".
 - [ ] 1.4 Add playlist URL resolution for `.pls`, `.m3u` and `.m3u8`, telling HLS apart. Verify that tests pin every scenario of "Playlist URLs".
 - [ ] 1.5 Add track titles: ICY title parsing with the UTF-8, else Latin-1 rule, Ogg comment titles, and the check for repeated titles. Verify that tests pin every scenario of "Track titles" and "Repeated titles aren't changes".
 
@@ -21,6 +21,8 @@ Implementation starts once the engine is chosen (#8) and the project skeleton (#
 
 - [ ] 3.1 Implement the engine seam with the engine chosen in #8. That covers opening streams, the data, end, failure and title events, the volume, and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
   - "Stream formats" and "Plain-http streams";
+  - "Track titles", with real ICY and Ogg streams;
+  - "HLS segments" and "Stalled HLS stream";
   - "Buffered audio while reconnecting".
 
 ## 4. Android

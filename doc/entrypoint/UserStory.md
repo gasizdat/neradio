@@ -183,7 +183,7 @@ Where a question has a proposed default, it's given after it. An answered questi
 
 ## Reconnecting (Feature 5)
 
-- **Q28. Resolved (#7):** retry at once, then after waits of 1, 2, 4, 8 and 16 seconds, then every 30 seconds, until playback stops. The waits start over once audio has played for 60 seconds.
+- **Q28. Resolved (#7):** retry at once, then after waits of 1, 2, 4, 8 and 16 seconds, then every 30 seconds, until playback stops. The waits start over when the user plays a station, when the network changes, and once audio has played for 60 seconds.
 - **Q29. Resolved (#7):** 10 seconds without data. The same limit fails a connection attempt that gets no audio.
 - **Q30.** How big is the buffer? A bigger one rides out longer drops but delays starting and switching stations. Set it from the engine test.
 - **Q31. Resolved (#7):** on Android, the app stops for a call and plays again after it, lowers its volume for a short prompt, and stops without starting again when another app starts playing music. On Windows, the system handles calls.

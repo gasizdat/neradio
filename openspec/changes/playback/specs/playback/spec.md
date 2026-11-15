@@ -119,7 +119,7 @@ A title equal to the current one SHALL NOT count as a title change, including th
 - **THEN** that doesn't count as a title change
 
 ### Requirement: Lost connections
-The app SHALL count a connection as lost when it fails, when the stream ends, or when no data has arrived for 10 seconds. A connection attempt that gets no audio data within 10 seconds SHALL count as failed.
+The app SHALL count a connection as lost when it fails, when the stream ends, or when no data has arrived for 10 seconds. An HLS stream receives its data a segment at a time, so its limit SHALL be 10 seconds plus its playlist's target duration. A connection attempt that gets no audio data within 10 seconds SHALL count as failed.
 
 #### Scenario: Server closes the connection
 - **WHEN** the server closes the connection while a station plays
@@ -132,6 +132,14 @@ The app SHALL count a connection as lost when it fails, when the stream ends, or
 #### Scenario: Short pause in the data
 - **WHEN** no data arrives for 9 seconds and then data arrives again
 - **THEN** the app keeps the connection and doesn't reconnect
+
+#### Scenario: HLS segments
+- **WHEN** an HLS stream's playlist has a target duration of 10 seconds, and a new segment arrives every 10 seconds
+- **THEN** the app keeps the connection and doesn't reconnect
+
+#### Scenario: Stalled HLS stream
+- **WHEN** an HLS stream's playlist has a target duration of 10 seconds, and no new segment arrives for 20 seconds
+- **THEN** the app counts the connection as lost and reconnects
 
 ### Requirement: Connection rounds
 The app SHALL connect in rounds. A round tries each stream URL of the station that hasn't been skipped once, without waiting between them, and ends when a stream plays or every stream has failed. When the user plays a station, the round starts with the primary stream. Every later round starts with the stream that played last. The others follow in the station's order. While reconnecting, the app SHALL show that it's reconnecting.
@@ -149,7 +157,7 @@ The app SHALL connect in rounds. A round tries each stream URL of the station th
 - **THEN** it shows that it's reconnecting, and the station stays the one selected
 
 ### Requirement: Waits between rounds
-The first round SHALL start at once. Each later round SHALL start after a wait of 1, 2, 4, 8 and 16 seconds, in that order, then 30 seconds for every round after that. A lost connection SHALL NOT restart this sequence; it starts over only when the user plays a station, or once audio has played for 60 seconds. The app SHALL keep reconnecting until playback stops.
+The first round SHALL start at once. Each later round SHALL start after a wait of 1, 2, 4, 8 and 16 seconds, in that order, then 30 seconds for every round after that. A lost connection SHALL NOT restart this sequence. It starts over only when the user plays a station, when the network changes, or once audio has played for 60 seconds. The app SHALL keep reconnecting until playback stops.
 
 #### Scenario: Every stream keeps failing
 - **WHEN** a connection is lost and every round fails
@@ -168,7 +176,7 @@ The first round SHALL start at once. Each later round SHALL start after a wait o
 - **THEN** the first round starts at once
 
 ### Requirement: Network changes
-While a station plays or reconnects, and the device switches to another network or connects to one after having none, the app SHALL start the next round at once. It SHALL drop the old connection, even if audio still arrives on it; abandon a round under way; and skip any wait in progress. The rounds after it SHALL wait as the sequence in "Waits between rounds" says.
+While a station plays or reconnects, and the device switches to another network or connects to one after having none, the app SHALL start the sequence in "Waits between rounds" over, with its first round at once. It SHALL drop the old connection, even if audio still arrives on it; abandon a round under way; and skip any wait in progress.
 
 #### Scenario: Wi-Fi to cellular
 - **WHEN** a station plays over Wi-Fi on a phone, and the phone switches to cellular
@@ -177,6 +185,10 @@ While a station plays or reconnects, and the device switches to another network 
 #### Scenario: Airplane mode on and off
 - **WHEN** a station plays, airplane mode is turned on for a minute and then off
 - **THEN** audio returns within 5 seconds of the phone reconnecting to a network, without the user doing anything
+
+#### Scenario: First round on the new network fails
+- **WHEN** the waits have reached 30 seconds, the phone connects to a network, and the round that starts at once fails
+- **THEN** the next round starts after a wait of 1 second
 
 ### Requirement: Buffered audio while reconnecting
 While it reconnects, the app SHALL keep playing the audio it has already buffered. When it reconnects before that audio runs out, the station SHALL play on without silence.

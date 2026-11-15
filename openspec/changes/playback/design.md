@@ -46,6 +46,8 @@ Alternative: call the engine directly. Rejected: the logic couldn't be tested wi
 ### One 10-second limit for stalls and for attempts
 Q29's 10 seconds without data counts a playing connection as stalled. The same limit also fails a connection attempt that hasn't produced audio data. This one rule bounds the time a round spends on a dead primary.
 
+For HLS, the limit is 10 seconds plus the playlist's target duration, since data arrives a segment at a time. The target duration has to reach the player. The seam then reports it with the data events, or the player reads it from the media playlist itself; #8 shows which of the two the engine allows.
+
 Alternative: a separate, shorter connect timeout. Rejected: a slow but working stream would then fail.
 
 ### Playlist URLs resolved in the core library, by extension
@@ -63,7 +65,7 @@ Alternative: check the content type of every stream URL. Rejected: it costs an e
 ICY metadata (`StreamTitle='…';`) declares no text encoding. The player reads the title as UTF-8 when the bytes are valid UTF-8, and as Latin-1 otherwise. Ogg comments are UTF-8 by definition.
 
 ### Network changes from MAUI's `Connectivity`
-The app forwards MAUI's `Connectivity.ConnectivityChanged` event to the player on both platforms. The player then starts the next round, as in "Network changes".
+The app forwards MAUI's `Connectivity.ConnectivityChanged` event to the player on both platforms. The player then starts the waits over, with a round at once, as in "Network changes".
 
 Alternative: each platform's own network callbacks. Rejected, unless #8 finds that MAUI's event misses a switch from Wi-Fi to cellular.
 
