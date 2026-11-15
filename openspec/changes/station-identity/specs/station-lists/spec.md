@@ -39,9 +39,9 @@ Each station entry SHALL have a `name`: a string that isn't empty after trimming
 A station entry can also have these fields, each optional:
 - `id`: a station ID;
 - `logo`: an absolute http or https URL;
-- `genres`: an array of strings;
-- `country`: an ISO 3166-1 alpha-2 code;
-- `language`: a BCP 47 language tag;
+- `genres`: an array of non-empty strings; any other element is dropped;
+- `country`: an ISO 3166-1 alpha-2 code, two letters in any case, kept in upper case;
+- `language`: a BCP 47 language tag, as a non-empty string;
 - `bitrate`: a positive integer, in kbit/s.
 
 A missing optional field SHALL leave the station without that value.
@@ -53,6 +53,14 @@ A missing optional field SHALL leave the station without that value.
 #### Scenario: Entry with every field
 - **WHEN** an entry has every optional field with a valid value
 - **THEN** the station carries each of those values
+
+#### Scenario: Country in lower case
+- **WHEN** an entry has `"country": "us"`
+- **THEN** the station's country is `US`
+
+#### Scenario: Genres with unusable elements
+- **WHEN** an entry has `"genres": ["jazz", "", 5]`
+- **THEN** the station's only genre is `jazz`
 
 ### Requirement: Unknown fields are ignored
 The app SHALL ignore fields it doesn't know, in the document and in station entries, and SHALL read the rest as if they weren't there.
@@ -147,7 +155,7 @@ When an entry and a known station both have IDs, they SHALL be the same station 
 - **THEN** the entry isn't that station
 
 ### Requirement: Matching by stream URL
-When an entry or a known station has no ID, they SHALL be the same station when they share a normalized stream URL, primary or alternate.
+When an entry or a known station has no ID, they SHALL be the same station when they share a normalized stream URL, primary or alternate. When the entry shares stream URLs with several known stations, "Ambiguous matches make a new station" decides instead.
 
 #### Scenario: Entry's alternate is the station's primary
 - **WHEN** an entry without an ID has an alternate stream that is a known station's primary stream
@@ -181,7 +189,7 @@ When an entry with an ID matches a known station without one, the station SHALL 
 - **THEN** the second entry isn't that station
 
 ### Requirement: Each station appears once per list
-A list SHALL yield each station once. An entry that matches an earlier entry of the same list SHALL be skipped, and the earlier entry's values kept.
+A list SHALL yield each station once. An entry that matches an earlier entry of the same list SHALL be skipped, and the earlier entry's values kept. The only exception is the ID rule: an earlier entry without an ID takes the later entry's ID.
 
 #### Scenario: Same ID twice
 - **WHEN** a list has two entries with the same ID and different names
@@ -190,3 +198,7 @@ A list SHALL yield each station once. An entry that matches an earlier entry of 
 #### Scenario: Two entries without IDs sharing a stream
 - **WHEN** a list has two entries without IDs that share a stream URL
 - **THEN** it yields one station, from the first entry
+
+#### Scenario: Earlier entry without an ID
+- **WHEN** a list has an entry without an ID, followed by an entry with an ID and a different name that shares its stream URL
+- **THEN** it yields one station, with the first entry's name and the second entry's ID
