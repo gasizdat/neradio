@@ -69,7 +69,7 @@ A statement marked *(open: Qn)* depends on a question in [Open and unclear quest
    - Screens: Browse/Search, Groups, Playlists, Recordings, Now Playing, Settings (equalizer, background, list sources).
    - Phone layout: bottom tabs and a mini-player. Desktop layout: a side bar and a permanent player bar. Both layouts are designed from the start.
 
-5. The application must aggressively restore lost connections to radio stations *(open: Q28–Q31)*.
+5. The application must aggressively restore lost connections to radio stations *(open: Q30)*.
    - The app keeps retrying, waiting longer between attempts up to a set maximum.
    - A stalled stream (still connected, but no data arriving) counts as a lost connection.
    - When the network changes (Wi-Fi to cellular and back), the app reconnects at once instead of waiting for a timeout.
@@ -183,10 +183,10 @@ Where a question has a proposed default, it's given after it. An answered questi
 
 ## Reconnecting (Feature 5)
 
-- **Q28.** How soon is the first retry, what's the longest wait between retries, and does the app ever give up? *Default: retry at once, back off to at most 30 seconds, never give up until the user stops playback.*
-- **Q29.** How long without data counts as a stalled stream? *Default: 10 seconds.*
+- **Q28. Resolved (#7):** retry at once, then after waits of 1, 2, 4, 8 and 16 seconds, then every 30 seconds, until playback stops. The waits start over when the user plays a station, when the network changes, and once audio has played for 60 seconds.
+- **Q29. Resolved (#7):** 10 seconds without data. The same limit fails a connection attempt that gets no audio.
 - **Q30.** How big is the buffer? A bigger one rides out longer drops but delays starting and switching stations. Set it from the engine test.
-- **Q31.** What happens during a phone call, and when another app plays sound (navigation prompts)? *Default: pause for a call and resume after it; lower the volume for a short prompt.*
+- **Q31. Resolved (#7):** on Android, the app stops for a call or an alarm and plays again after it, lowers its volume for a short prompt, and stops without starting again when another app starts playing music. On Windows, the system handles calls.
 
 ## Player and appearance
 
