@@ -45,8 +45,8 @@
       titles: ['Grieg - Morning Mood', 'Bergen Philharmonic - Holberg Suite: Prelude', 'Ingrid Sand - Nocturne in E flat'] },
     { id: 'valley', name: 'Northern Valley and Lakeside Community Radio for Everyone Who Lives Here', logo: LOGOS.valley, genres: ['Community', 'Folk'], country: 'Finland', language: 'Finnish', format: 'MP3', bitrate: 64, rate: '44.1 kHz', streams: 1,
       titles: ['Village choir - Kesäyö', 'Local news in brief', 'Aino Laine - Järven Ranta'] },
-    { id: 'orbit', name: 'Orbit Lo-Fi', logo: LOGOS.orbit, genres: ['Lo-fi'], country: 'Japan', language: null, format: 'HLS AAC', bitrate: 96, rate: '48 kHz', streams: 1,
-      titles: ['kumo - study loop 3', 'Hana Beats - Rain on Tin', 'nightbus - Koenji'] },
+    // An HLS station counts as one without titles (#7).
+    { id: 'orbit', name: 'Orbit Lo-Fi', logo: LOGOS.orbit, genres: ['Lo-fi'], country: 'Japan', language: null, format: 'HLS AAC', bitrate: 96, rate: '48 kHz', streams: 1, noTitles: true, titles: [] },
     { id: 'oldies', name: 'Old Town Oldies', logo: LOGOS.oldies, genres: ['Oldies'], country: 'Poland', language: 'Polish', format: 'MP3', bitrate: 128, rate: '44.1 kHz', streams: 1, inCatalog: false,
       titles: ['Czerwone Maki - Tango 1962', 'Anna Bielska - Stare Miasto'] },
     { id: 'lounge', name: 'Lossless Lounge', logo: LOGOS.lounge, genres: ['Lounge'], country: 'Italy', language: 'Italian', format: 'FLAC', bitrate: 1411, rate: '44.1 kHz', streams: 1, unsupported: true, titles: [] },
@@ -128,6 +128,16 @@
   var badLogos = new Set();
   var timers = { connect: 0, reconnect: 0, toast: 0 };
   var app = document.getElementById('app');
+
+  // One file input that outlives every render: the page re-renders while the picker is open,
+  // which would otherwise leave the user's choice on an input that's gone.
+  var picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = 'image/*';
+  picker.hidden = true;
+  picker.id = 'image-picker';
+  document.body.appendChild(picker);
+  var pickFor = null;
 
   // ---------- Helpers ----------
 
@@ -451,7 +461,12 @@
       ['Stream', live || (st.format ? [st.format, st.bitrate ? st.bitrate + ' kbps' : null].filter(Boolean).join(' · ') : null)],
       ['Addresses', st.streams > 1 ? st.streams + ' stream addresses: if one fails, the next is tried' : null]
     ].filter(function (row) { return row[1]; });
+    if (!rows.length) return '';
     return '<dl class="facts">' + rows.map(function (row) { return '<dt>' + row[0] + '</dt><dd>' + esc(row[1]) + '</dd>'; }).join('') + '</dl>';
+  }
+
+  function about(factList) {
+    return factList ? '<div class="section"><h2>About</h2>' + factList + '</div>' : '';
   }
 
   function historyList(st) {
@@ -497,7 +512,7 @@
       '<button class="btn" data-action="edit-station" data-id="' + st.id + '">' + icon('edit') + 'Name and logo</button></div></div></div>' +
       (here && state.problem ? '<div class="banner">' + icon('alert') + '<span>' + esc(state.problem) + '</span></div>' : '') +
       '<div class="section"><div class="section-head"><h2>In your groups</h2></div>' + groupChips(s(st.id)) + '</div>' +
-      '<div class="section"><div class="section-head"><h2>About</h2></div>' + facts(st, live) + '</div>' +
+      about(facts(st, live)) +
       historyList(st);
   }
 
@@ -530,7 +545,7 @@
       '<div class="readout">' + esc(readout) + '</div>' +
       '<div class="now-controls">' + favButton(st) + playButton(st, 'station', true) + recordButton() + sleepButton() + '</div>' +
       '<div class="section"><h2>In your groups</h2>' + groupChips(s(st.id)) + '</div>' +
-      '<div class="section"><h2>About</h2>' + facts(st, null) + '</div>' +
+      about(facts(st, null)) +
       '<div class="inline"><a class="btn" href="#preferences-equalizer">Equalizer</a><button class="btn" data-action="viz" aria-pressed="' + state.vizOn + '">' + (state.vizOn ? 'Hide visualizer' : 'Show visualizer') + '</button><a class="btn btn--quiet" href="#station-' + st.id + '">Station page' + icon('next') + '</a></div>' +
       historyList(st) + '</div></div>';
   }
@@ -643,8 +658,8 @@
     var tiles = BACKGROUNDS.map(function (b) {
       return '<button class="swatch" data-action="background" data-id="' + b.id + '" aria-pressed="' + (state.background === b.id) + '"><span class="backdrop" data-bg="' + b.id + '"></span>' + b.name + '</button>';
     }).join('');
-    var own = '<label class="swatch" aria-pressed="' + (state.background === 'image') + '"><span class="backdrop" data-bg="image"' + (state.userImage ? ' style="background-image:url(&quot;' + esc(state.userImage) + '&quot;)"' : '') + '>' + (state.userImage ? '' : '<span style="position:absolute;inset:0;display:grid;place-items:center;z-index:1">' + icon('image') + '</span>') + '</span>' +
-      'Your image…<input id="bg-file" type="file" accept="image/*" data-input="bg-file"></label>';
+    var own = '<button class="swatch" data-action="pick-image" data-id="background" aria-pressed="' + (state.background === 'image') + '"><span class="backdrop" data-bg="image"' + (state.userImage ? ' style="background-image:url(&quot;' + esc(state.userImage) + '&quot;)"' : '') + '>' + (state.userImage ? '' : '<span class="swatch-icon">' + icon('image') + '</span>') + '</span>' +
+      'Your image…</button>';
     return pageHead('Background') +
       '<p class="hint">One background for the whole app. Text and controls sit on a tinted layer, so they stay readable over any picture.</p>' +
       '<div class="swatches">' + tiles + own + '</div>';
@@ -705,7 +720,7 @@
       '<div class="field"><label for="st-name">Name</label><input id="st-name" type="text" value="' + esc(draft.name || '') + '" placeholder="' + esc(st.name) + '" data-input="draft-name">' +
       '<span class="hint">Shown everywhere in neradio. The station list keeps “' + esc(st.name) + '”.</span></div>' +
       '<div class="field"><label>Logo</label><div class="inline">' + tile +
-      '<label class="btn">' + icon('image') + 'Choose image…<input id="st-logo-file" type="file" accept="image/*" hidden data-input="draft-logo-file"></label>' +
+      '<button class="btn" data-action="pick-image" data-id="station-logo">' + icon('image') + 'Choose image…</button>' +
       '<button class="btn" data-action="draft-initials">Initials</button>' +
       (st.logo ? '<button class="btn btn--quiet" data-action="draft-catalog-logo">Station’s own logo</button>' : '') + '</div></div>' +
       '<div class="sheet-actions">' + (changed ? '<button class="btn btn--quiet" data-action="draft-reset">' + icon('reset') + 'Reset to the original</button>' : '') +
@@ -717,7 +732,7 @@
     return sheetHead('Group name and logo') +
       '<div class="field"><label for="g-name">Name</label><input id="g-name" type="text" value="' + esc(sh.draft.name) + '" data-input="group-draft-name"></div>' +
       '<div class="field"><label>Logo</label><div class="inline">' + groupLogo({ id: g.id, name: sh.draft.name || g.name, logo: sh.draft.logo }, 56) +
-      '<label class="btn">' + icon('image') + 'Choose image…<input id="g-logo-file" type="file" accept="image/*" hidden data-input="group-logo-file"></label>' +
+      '<button class="btn" data-action="pick-image" data-id="group-logo">' + icon('image') + 'Choose image…</button>' +
       (sh.draft.logo ? '<button class="btn" data-action="group-initials">Initials</button>' : '') + '</div></div>' +
       '<div class="sheet-actions">' + (g.builtIn ? '' : '<button class="btn btn--quiet" data-action="delete-group" data-id="' + g.id + '">' + icon('trash') + 'Delete group</button>') +
       '<button class="btn" data-action="close-sheet">Cancel</button><button class="btn btn--primary" data-action="save-group">Save</button></div>';
@@ -1087,6 +1102,11 @@
       refresh();
     },
     background: function (el) { state.background = el.dataset.id; refresh(); },
+    'pick-image': function (el) {
+      pickFor = el.dataset.id;
+      picker.value = '';
+      picker.click();
+    },
     'bright-photo': function () { state.userImage = BRIGHT_PHOTO; state.background = 'image'; refresh(); },
     'eq-preset': function (el) { if (EQ_PRESETS[el.dataset.id]) { state.eq = EQ_PRESETS[el.dataset.id].slice(); } state.eqPreset = el.dataset.id; refresh(); },
     viz: function () { state.vizOn = !state.vizOn; refresh(); },
@@ -1168,19 +1188,21 @@
         render();
         break;
       }
-      case 'bg-file': readImage(el, function (url) { state.userImage = url; state.background = 'image'; render(); }); break;
-      case 'draft-logo-file': readImage(el, function (url) { state.sheet.draft.logo = url; render(); }); break;
-      case 'group-logo-file': readImage(el, function (url) { state.sheet.draft.logo = url; render(); }); break;
     }
   });
 
-  function readImage(input, done) {
-    var file = input.files && input.files[0];
+  picker.addEventListener('change', function () {
+    var file = picker.files && picker.files[0];
     if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () { done(reader.result); };
-    reader.readAsDataURL(file);
-  }
+    var url = URL.createObjectURL(file);
+    if (pickFor === 'background') {
+      state.userImage = url;
+      state.background = 'image';
+    } else if (state.sheet && state.sheet.draft) {
+      state.sheet.draft.logo = url;
+    }
+    render();
+  });
 
   // Load and error don't bubble, so they're caught on the way down.
   app.addEventListener('error', function (e) {
