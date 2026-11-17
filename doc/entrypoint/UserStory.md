@@ -204,11 +204,11 @@ Where a question has a proposed default, it's given after it. An answered questi
 ## Design
 
 - **Q36. Resolved (#10):** as the HTML concept demo shows:
-  - **Groups on the station page (3.3):** the page lists the groups that contain the station, each with a button that removes the station from it. "Add to group" opens every group with a checkbox, and a field to create a new group. A star wherever the station appears adds it to Favorites or removes it.
+  - **Groups on the station page (3.3):** the page lists the groups that contain the station, each with a button that removes the station from it. "Add to group" opens every group with a checkbox, and a field to create a new group. A star on the station's row in Browse, on its page and in Now playing adds it to Favorites or removes it.
   - **Renamed stations:** lists show only the user's name. The station page marks the station "Renamed", shows the name from the station list, and offers "Reset name". A logo the user chose is marked the same way, with "Reset logo".
   - **Logo fallback:** a tile with the station's initials replaces a missing logo, one that fails to load, and one smaller than 48 px on either side. Its color comes from the station's ID, so it looks the same everywhere and after a restart.
   - **Playlist editor:** stations and recorded tracks share one ordered list. Each row shows what the item is and how the playlist moves on from it:
-    - a station at its next title, or after the playlist's time limit;
+    - a station at its next title, or after the time limit;
     - a station that sends no titles after the time limit only;
     - a recording at its end.
 
