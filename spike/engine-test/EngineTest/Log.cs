@@ -24,6 +24,13 @@ static class Log
     {
         var writer = new Thread(WriteLines) { IsBackground = true, Name = "log" };
         writer.Start();
+        // Written at once, past the queue: the process is about to end. Without this, a crash
+        // and Android killing the app would leave the same log.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            using var file = Open();
+            file.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} crash    {e.ExceptionObject}");
+        };
     }
 
     public static void Write(string category, string message)
@@ -47,8 +54,14 @@ static class Log
 
     static void WriteLines()
     {
-        using var file = new StreamWriter(FilePath, append: true) { AutoFlush = true };
+        using var file = Open();
         foreach (var line in Pending.GetConsumingEnumerable())
             file.WriteLine(line);
+    }
+
+    static StreamWriter Open()
+    {
+        var stream = new FileStream(FilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+        return new StreamWriter(stream) { AutoFlush = true };
     }
 }

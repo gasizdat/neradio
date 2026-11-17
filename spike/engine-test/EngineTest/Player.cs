@@ -90,7 +90,11 @@ sealed class Player
     public bool Recording
     {
         get => _recorder.On;
-        set => _recorder.On = value;
+        set
+        {
+            _recorder.TitleChanged(Title);
+            _recorder.On = value;
+        }
     }
 
     public event Action? Changed;
@@ -129,8 +133,11 @@ sealed class Player
         Log.Write("start", $"BASS {Bass.Version}, BASSmix {BassMix.Version}, BASS_FX {BassFx.Version}, BASSOPUS {opus.Version}, BASSHLS {hls.Version}");
 
         _mixer = BassMix.CreateMixerStream(48000, 2, BassFlags.Float | BassFlags.MixerNonStop);
-        Bass.ChannelSetDSP(_mixer, _silenceMeter);
+        Check(_mixer != 0, "mixer");
+        var meter = Bass.ChannelSetDSP(_mixer, _silenceMeter);
+        Check(meter != 0, "silence meter");
         _eq = Bass.ChannelSetFX(_mixer, EffectType.PeakEQ, 0);
+        Check(_eq != 0, "equalizer");
         for (var band = 0; band < Bands.Length; band++)
             SetGain(band, 0);
 
@@ -170,7 +177,8 @@ sealed class Player
     public void SetGain(int band, double gain)
     {
         var parameters = new PeakEQParameters { lBand = band, fCenter = Bands[band], fBandwidth = 1, fGain = (float)gain, lChannel = FXChannelFlags.All };
-        Bass.FXSetParameters(_eq, parameters);
+        var set = Bass.FXSetParameters(_eq, parameters);
+        Check(set, $"equalizer band {band}");
     }
 
     public bool GetSpectrum(float[] fft) => Bass.ChannelGetData(_mixer, fft, (int)DataFlags.FFT2048) > 0;
@@ -193,7 +201,9 @@ sealed class Player
             if (_url is null || State == "stopped" || e.NetworkAccess != NetworkAccess.Internet)
                 return;
             _wait = -1;
-            WaitForAudio("network change");
+            // One switch fires several events; the 5-second targets count from the first.
+            if (Volatile.Read(ref _waitingFor) is null)
+                WaitForAudio("network change");
             Connect("network change", switchAtOnce: true);
         });
     }
@@ -257,14 +267,24 @@ sealed class Player
             Log.Write("tags", tag);
 
         var source = new Source(handle, request, isHls);
-        Bass.ChannelSetSync(handle, SyncFlags.Downloaded | SyncFlags.Mixtime, 0, _downloadEnded);
-        Bass.ChannelSetSync(handle, SyncFlags.MetadataReceived | SyncFlags.Mixtime, 0, _icyTitle);
-        Bass.ChannelSetSync(handle, SyncFlags.OggChange | SyncFlags.Mixtime, 0, _oggTitle);
-        Bass.ChannelSetSync(handle, SyncFlags.HlsSegement | SyncFlags.Mixtime, 0, _segmentStarted);
-        BassMix.MixerAddChannel(_mixer, handle, BassFlags.MixerChanPause | BassFlags.MixerChanNoRampin);
+        var downloadSync = Bass.ChannelSetSync(handle, SyncFlags.Downloaded | SyncFlags.Mixtime, 0, _downloadEnded);
+        Check(downloadSync != 0, "download-ended sync");
+        var icySync = Bass.ChannelSetSync(handle, SyncFlags.MetadataReceived | SyncFlags.Mixtime, 0, _icyTitle);
+        Check(icySync != 0, "ICY title sync");
+        var oggSync = Bass.ChannelSetSync(handle, SyncFlags.OggChange | SyncFlags.Mixtime, 0, _oggTitle);
+        Check(oggSync != 0, "Ogg title sync");
+        if (isHls)
+        {
+            var segmentSync = Bass.ChannelSetSync(handle, SyncFlags.HlsSegement | SyncFlags.Mixtime, 0, _segmentStarted);
+            Check(segmentSync != 0, "HLS segment sync");
+        }
+        var added = BassMix.MixerAddChannel(_mixer, handle, BassFlags.MixerChanPause | BassFlags.MixerChanNoRampin);
+        Check(added, "adding the stream to the mixer");
         // Mixer syncs can only be set on a channel that's already in the mixer.
-        BassMix.ChannelSetSync(handle, SyncFlags.End | SyncFlags.Mixtime, 0, _bufferEnded);
-        BassMix.ChannelSetSync(handle, SyncFlags.Stalled | SyncFlags.Mixtime, 0, _stalled);
+        var endSync = BassMix.ChannelSetSync(handle, SyncFlags.End | SyncFlags.Mixtime, 0, _bufferEnded);
+        Check(endSync != 0, "buffer-ended sync");
+        var stallSync = BassMix.ChannelSetSync(handle, SyncFlags.Stalled | SyncFlags.Mixtime, 0, _stalled);
+        Check(stallSync != 0, "stall sync");
         var stillPlaying = _current is { Gated: false } && Native.BASS_Mixer_ChannelIsActive(_current.Handle) == PlaybackState.Playing;
         if (stillPlaying)
         {
@@ -380,14 +400,19 @@ sealed class Player
             Release(current);
     }
 
-    bool Ready(Source source) => source.Lost || Level(source) >= PreBuffer;
+    // The timeout keeps a buffer that never reports its level, or never fills, from holding a
+    // station silent: the log then shows the gate, not a dead engine.
+    bool Ready(Source source) => source.Lost || Level(source) >= PreBuffer || Stopwatch.GetElapsedTime(source.GatedSince).TotalSeconds >= 10;
 
-    static void Release(Source source)
+    void Release(Source source)
     {
         source.Gated = false;
-        BassMix.ChannelFlags(source.Handle, BassFlags.Default, BassFlags.MixerChanPause);
+        var flags = BassMix.ChannelFlags(source.Handle, BassFlags.Default, BassFlags.MixerChanPause);
+        Check((int)flags != -1, "unpausing the stream");
         var waited = Stopwatch.GetElapsedTime(source.GatedSince);
-        Log.Write("buffer", $"#{source.Request} plays: buffer {Level(source):F0}% after {waited.TotalMilliseconds:F0} ms");
+        var level = Level(source);
+        var why = source.Lost ? "the download ended" : level >= PreBuffer ? "pre-buffered" : "TIMEOUT, buffer never reached the pre-buffer level";
+        Log.Write("buffer", $"#{source.Request} plays: buffer {level:F0}% after {waited.TotalMilliseconds:F0} ms ({why})");
     }
 
     // BASS's own pre-buffering only holds back BASS_ChannelPlay; a decoding source in a mixer
@@ -424,13 +449,14 @@ sealed class Player
     {
         var meta = ReadString(Bass.ChannelGetTags(channel, TagType.META));
         var title = meta is null ? null : ParseIcy(meta);
-        _recorder.Split(title);
+        _recorder.TitleChanged(title);
         Post(() => TitleArrived(channel, title, $"ICY {meta}"));
     }
 
     void OnOggTitle(int sync, int channel, int data, IntPtr user)
     {
         var title = OggTitle(channel);
+        _recorder.TitleChanged(title);
         Post(() => TitleArrived(channel, title, "Ogg comments"));
     }
 
@@ -604,6 +630,13 @@ sealed class Player
                 Log.Write("error", e.ToString());
             }
         }
+    }
+
+    // An ignored failure looks like an engine fault later, as a sync that never fires did.
+    static void Check(bool succeeded, string what)
+    {
+        if (!succeeded)
+            Log.Write("error", $"{what} failed: {Bass.LastError}");
     }
 
     static (int Handle, string Version) LoadPlugin(string name)

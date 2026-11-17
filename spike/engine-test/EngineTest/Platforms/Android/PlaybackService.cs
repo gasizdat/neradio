@@ -77,7 +77,16 @@ sealed class PlaybackService : Service
 
     void EnterForeground()
     {
-        StartForeground(NotificationId, Build(), ForegroundService.TypeMediaPlayback);
+        try
+        {
+            StartForeground(NotificationId, Build(), ForegroundService.TypeMediaPlayback);
+        }
+        // Android can refuse here too, not only when the service is started.
+        catch (Java.Lang.IllegalStateException e)
+        {
+            Log.Write("android", $"going to the foreground refused: {e.GetType().Name}: {e.Message}");
+            return;
+        }
         var power = (PowerManager)GetSystemService(PowerService)!;
         _wakeLock ??= power.NewWakeLock(WakeLockFlags.Partial, "neradio:playback")!;
         if (!_wakeLock.IsHeld)

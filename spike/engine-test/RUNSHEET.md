@@ -32,7 +32,15 @@ This branch is never merged.
    `Android/data/com.neradio.enginetest/files/engine-test-<time>.log`. One file per app start.
    Recordings are in `.../files/Recordings`. Please attach the logs to #8.
 
-Leave **Buffer** at 5000 ms and **Pre-buffer** at 75% unless a step says otherwise.
+Leave **Buffer** at 5000 ms and **Pre-buffer** at 75% unless a step says otherwise. 75% is
+BASS's default. #8 expects the thresholds to end up low, so if a 5-second target fails at 75%,
+repeat it at 25% before recording a fail: at 75% the start alone takes about 3 s.
+
+## Step 0: a 5-minute smoke run
+
+The app has only run on Windows so far. Before the long test, play *MP3*, *HE-AAC* and
+*HLS AAC* for a minute each, stop, then share the log. If anything there is broken, it's the
+test app's fault, not BASS's, and gets fixed first.
 
 ## What the log lines mean
 
@@ -40,7 +48,7 @@ Leave **Buffer** at 5000 ms and **Pre-buffer** at 75% unless a step says otherwi
 |---|---|
 | `start` | Phone, Android version, battery optimization, BASS and add-on versions |
 | `connect` | Each attempt: how long it took, the format, the HTTP status and content type, or the BASS error and how the app counted it |
-| `buffer` | A connection starts playing once its buffer reaches the pre-buffer level; a buffer that ran empty |
+| `buffer` | A connection starts playing once its buffer reaches the pre-buffer level, or after 10 s with `TIMEOUT`; a buffer that ran empty |
 | `switch` | Which connection plays now, and whether it took over in the same mix (no gap) |
 | `lost` | A lost connection: the download ended, or no new HLS segment in time |
 | `silence` | Every silence over 100 ms that the listener hears, with its length |
@@ -48,7 +56,8 @@ Leave **Buffer** at 5000 ms and **Pre-buffer** at 75% unless a step says otherwi
 | `title` | Each title the stream reports, and whether it counts as a change |
 | `network` | Each connectivity event: count them per Wi-Fi to cellular switch |
 | `media`, `android` | Media buttons and the media session; the foreground service, its locks, and whether Android refused to start it |
-| `beat` | Every 10 s while playing: state, audio output so far, total silence, buffer level, spectrum frame rate, battery, network. A missing heartbeat means the app was killed. |
+| `beat` | Every 10 s while playing: state, audio output so far, total silence, buffer level, spectrum frame rate, battery, network. A missing heartbeat means the app was killed. `output` must grow by about 10 s per beat: if it doesn't, Android stopped taking audio, and silence isn't counted then. |
+| `crash` | The app crashed, with the exception. A log that just ends without one means Android killed the app. |
 | `burst` | The buffer during the first 4 s after a connection: how much the server sends at once |
 | `record` | Each recorded file |
 | `error` | Anything unexpected; please report these |
@@ -99,7 +108,7 @@ Each check names the station to pick in the app, what to do, and what passes.
     Turn Wi-Fi back on and check the same way.
 13. *MP3*, airplane mode on for a minute, then off.
     Pass: `audio audible N ms after network change` with N at most 5000. N counts from the
-    network event, not from turning airplane mode off.
+    first `network` event with access `Internet`, not from turning airplane mode off.
 
 ### Background playback and media controls
 
@@ -121,9 +130,13 @@ Each check names the station to pick in the app, what to do, and what passes.
 20. Spectrum: with the screen on, the beats show `fft 60 fps, 60 with new data` or close to
     it. The app doesn't ask for the microphone permission. Its merged manifest has no
     `RECORD_AUDIO`, which was checked at build time.
-21. Turn **Record** on with *MP3* for two track changes, and again with *Ogg Vorbis*:
-    a `record new file` line per title. Copy the files to a PC: each one plays and holds one
-    track. The edges can be off by a few seconds.
+21. While *MP3* plays, turn **Record** on and wait for two track changes; then the same with
+    *Ogg Vorbis*. Expected: a `record new file` line per title. Copy the files to a PC: each
+    one plays and holds one track, with edges off by a few seconds at most.
+    MP3 and AAC split at ICY title changes, and a reconnect with the same title stays in the
+    same file. Ogg splits where a new Ogg stream starts, so a reconnect also starts a new
+    file, and an Ogg file can be named after the previous title.
+    Already checked on the PC: MP3 and Ogg files from a stream with reconnects all decode.
 
 ### Buffer size (Q30)
 
@@ -143,11 +156,14 @@ Each check names the station to pick in the app, what to do, and what passes.
 
 ## Already found on the PC, before the phone test
 
-- MP3, Ogg Vorbis and Opus play, and their titles arrive (ICY and Ogg comments).
-- **AAC is a problem on Windows.** BASS decodes AAC through Media Foundation there, and it
-  reads 1 MB of the stream before it opens: 50 s at 128 kbps, 200 s at 32 kbps. HLS fails
-  outright (`FileFormat`), because FIP's live playlist holds less than 1 MB. Android decodes
-  AAC with its own codecs, so the phone test decides whether this is Windows-only.
+- **AAC is a problem on Windows.** Observed on this PC (a Windows 11 Insider build,
+  10.0.26300): BASS decodes AAC through Media Foundation, and opening each AAC stream took
+  until exactly 1 MB had been downloaded. That's 50 s at 128 kbps and 200 s at 32 kbps. HLS with
+  AAC failed with `FileFormat`. The likely cause, not proven, is the same 1 MB read: FIP's
+  live playlist holds less than 1 MB. Android decodes AAC with its own codecs, so the phone
+  test decides whether this is Windows-only.
+- MP3, Ogg Vorbis and Opus play. Titles arrive from ICY and from Ogg comments. The Opus
+  station tried sends no title, so Opus titles are unchecked.
 - An HTTP 404 gives `FileOpen`. A web page and a real unsupported format both give
   `FileFormat`. So the app tells them apart by the content type, which BASS reports.
 - A server close fires BASS's "download ended" sync, and BASS doesn't reconnect a live
