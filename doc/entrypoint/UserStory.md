@@ -187,6 +187,12 @@ Where a question has a proposed default, it's given after it. An answered questi
 - **Q29.** How long without data counts as a stalled stream? *Default: 10 seconds.*
 - **Q30.** How big is the buffer? A bigger one rides out longer drops but delays starting and switching stations. Set it from the engine test.
 - **Q31.** What happens during a phone call, and when another app plays sound (navigation prompts)? *Default: pause for a call and resume after it; lower the volume for a short prompt.*
+- **Q41.** Should the app, as an option, keep a lower-bitrate stream of the station downloading alongside the one playing, and switch to it when the main stream's buffer runs out? *Default: not in the first version. Switching to a lower-bitrate stream after the main one stalls is considered first: it uses no extra data, but leaves a short gap.*
+  - It helps when the network gets too slow for the main stream, or when only the main stream's server fails.
+  - It doesn't help when the phone loses its network, because both streams stop at the same moment of the broadcast. Keeping the spare on cellular while the main stream uses Wi-Fi would cover a lost Wi-Fi connection, if Android and the engine allow it.
+  - It uses extra data all the time, about 14 MB an hour at 32 kbps. On a slow network, the spare also takes bandwidth from the main stream.
+  - A station's streams come from separate encoders and may be out of sync, so the app has to line them up when it switches, and again when it switches back.
+  - The app has to know which stream is the same programme at a lower bitrate. An alternate stream isn't always one: it can be a network's shared fallback.
 
 ## Player and appearance
 
