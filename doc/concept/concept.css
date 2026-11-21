@@ -345,6 +345,18 @@ p { margin: 0; }
 .play-btn--big .icon { width: 30px; height: 30px; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* On a phone, Browse's genres take one row that scrolls sideways, so the stations stay in view. */
+.app[data-layout="phone"] .chips--scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-left: calc(-1 * var(--gutter-l));
+  margin-right: calc(-1 * var(--gutter-r));
+  padding-left: var(--gutter-l);
+  padding-right: var(--gutter-r);
+}
+.app[data-layout="phone"] .chips--scroll::-webkit-scrollbar { display: none; }
+.app[data-layout="phone"] .chips--scroll .chip { flex: none; }
 .chip {
   display: inline-flex;
   align-items: center;

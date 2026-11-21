@@ -315,7 +315,8 @@
         '</header>';
     }
     html += '<main class="main" id="main">' + page() + '</main>';
-    html += '<section class="player" id="player" aria-label="Player">' + player() + '</section>';
+    // On a phone, Now playing has the player controls itself, so a mini-player would repeat them.
+    if (desktop || r.name !== 'now') html += '<section class="player" id="player" aria-label="Player">' + player() + '</section>';
     if (!desktop) {
       html += '<nav class="tabs" aria-label="Main">' + NAV.filter(function (n) { return !n.desktopOnly; }).map(function (n) {
         return '<a class="tab" href="#' + n.route + '"' + (current === n.route ? ' aria-current="page"' : '') + '>' + icon(n.icon) + n.label + '</a>';
@@ -437,7 +438,7 @@
     genres.sort();
     return pageHead('Browse') +
       '<label class="search">' + icon('search') + '<span class="sr-only">Search stations</span><input id="search" type="search" placeholder="Search stations, genres, countries" value="' + esc(state.query) + '" data-input="search" autocomplete="off"></label>' +
-      '<div class="chips" role="group" aria-label="Genre">' +
+      '<div class="chips chips--scroll" role="group" aria-label="Genre">' +
       '<button class="chip" data-action="genre" data-id="" aria-pressed="' + (state.genre === null) + '">All</button>' +
       genres.map(function (g) { return '<button class="chip" data-action="genre" data-id="' + esc(g) + '" aria-pressed="' + (state.genre === g) + '">' + esc(g) + '</button>'; }).join('') +
       '</div>' +
