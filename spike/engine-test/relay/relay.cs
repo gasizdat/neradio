@@ -7,6 +7,7 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text;
 using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -115,8 +116,11 @@ app.MapGet("/hls", async (HttpContext ctx, string u, string? freeze) =>
         hlsSnapshot[u] = playlist;
     }
     Log($"{ctx.Connection.RemoteIpAddress} playlist{(frozen ? " (frozen)" : "")} at {age:F0} s");
+    // Without a length the response is chunked, and BASSHLS doesn't recognize a chunked playlist.
+    var body = Encoding.UTF8.GetBytes(playlist);
     ctx.Response.ContentType = "application/vnd.apple.mpegurl";
-    await ctx.Response.WriteAsync(playlist);
+    ctx.Response.ContentLength = body.Length;
+    await ctx.Response.Body.WriteAsync(body, ctx.RequestAborted);
 });
 
 app.Run();
