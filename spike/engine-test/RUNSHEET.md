@@ -156,16 +156,16 @@ Each check names the station to pick in the app, what to do, and what passes.
 
 ## Already found on the PC, before the phone test
 
-- **AAC is a problem on Windows.** Observed on this PC (a Windows 11 Insider build,
-  10.0.26300): BASS decodes AAC through Media Foundation, and `BASS_StreamCreateURL` returns
-  only once exactly 1 MiB (1,048,576 bytes) has been downloaded. That's 50 s at 128 kbps and
-  200 s at 32 kbps. HLS with AAC fails with `FileFormat`, because FIP's live playlist never holds
-  1 MiB. Windows' own `MediaPlayer`, also Media Foundation, opens the same streams in 1-2 s, HLS
+- **AAC is a problem on Windows.** Observed on this PC, a regular Windows 11 26H2 (build
+  26300.9974, the November 2026 cumulative update, not an Insider build): BASS decodes AAC
+  through Media Foundation, and `BASS_StreamCreateURL` returns only once exactly 1 MiB
+  (1,048,576 bytes) has been downloaded. That's 50 s at 128 kbps, 99 s at 64 kbps and 200 s at
+  32 kbps. HLS with AAC fails with `FileFormat`, because FIP's live playlist never holds 1 MiB.
+  Windows' own `MediaPlayer`, also Media Foundation, opens the same streams in 1-2 s, HLS
   included, so the wait is in how BASS hands the stream to Media Foundation.
   `BASS_CONFIG_VERIFY`, `VERIFY_NET` and `NET_PREBUF_WAIT` make no difference. BASS_AAC would
   bypass Media Foundation, but it's built on FAAD2, which is GPL. Android decodes AAC with its
-  own codecs and isn't affected. Whether a normal (non-Insider) Windows 11 is affected is
-  still open.
+  own codecs and isn't affected.
 - MP3, Ogg Vorbis and Opus play. Titles arrive from ICY and from Ogg comments. The Opus
   station tried sends no title, so Opus titles are unchecked.
 - An HTTP 404 gives `FileOpen`. A web page and a real unsupported format both give
@@ -228,7 +228,7 @@ Each check names the station to pick in the app, what to do, and what passes.
 
 | Platform | Problem | Status |
 |---|---|---|
-| Windows | AAC opens only after 1 MiB has been downloaded (50-200 s); HLS AAC doesn't play at all | Open. Next: try a non-Insider Windows 11; fallback: decode AAC/HLS with Windows' own media stack and feed the audio into BASS |
+| Windows | AAC opens only after 1 MiB has been downloaded (50-200 s); HLS AAC doesn't play at all | Open, on the current Windows 11. Way around: decode AAC/HLS with Windows' own media stack and feed the audio into BASS |
 | Android | A .NET GC during connect drops 15-45% of attempts | Mitigated: the app retries at once. Proven fix: open streams on a Java thread |
 | Android | The read timeout doesn't catch a stall with a download callback set, or on a chunked stream | Worked around: the app's own stall watchdog |
 
