@@ -56,6 +56,8 @@
 		<ItemGroup>
 			<BassArchive Include="bass24;bassmix24;bassopus24;basshls24" Folder="" />
 			<BassArchive Include="bass_fx24" Folder="z/0/" />
+			<!-- From Android 7 on, apps can't load the system's OpenSSL, so BASS needs this add-on for HTTPS. -->
+			<BassArchive Include="bass_ssl" Folder="" Condition="'$(TargetPlatformIdentifier)' == 'android'" />
 		</ItemGroup>
 		<DownloadFile SourceUrl="https://www.un4seen.com/files/%(BassArchive.Folder)%(BassArchive.Identity)$(BassSuffix).zip" DestinationFolder="$(BassDir)zip" Condition="!Exists('$(BassDir)zip\%(BassArchive.Identity)$(BassSuffix).zip')" />
 		<Unzip SourceFiles="$(BassDir)zip\%(BassArchive.Identity)$(BassSuffix).zip" DestinationFolder="$(BassDir)%(BassArchive.Identity)" Condition="!Exists('$(BassDir)%(BassArchive.Identity)')" />
