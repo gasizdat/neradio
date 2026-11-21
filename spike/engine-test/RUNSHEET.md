@@ -157,11 +157,15 @@ Each check names the station to pick in the app, what to do, and what passes.
 ## Already found on the PC, before the phone test
 
 - **AAC is a problem on Windows.** Observed on this PC (a Windows 11 Insider build,
-  10.0.26300): BASS decodes AAC through Media Foundation, and opening each AAC stream took
-  until exactly 1 MB had been downloaded. That's 50 s at 128 kbps and 200 s at 32 kbps. HLS with
-  AAC failed with `FileFormat`. The likely cause, not proven, is the same 1 MB read: FIP's
-  live playlist holds less than 1 MB. Android decodes AAC with its own codecs, so the phone
-  test decides whether this is Windows-only.
+  10.0.26300): BASS decodes AAC through Media Foundation, and `BASS_StreamCreateURL` returns
+  only once exactly 1 MiB (1,048,576 bytes) has been downloaded. That's 50 s at 128 kbps and
+  200 s at 32 kbps. HLS with AAC fails with `FileFormat`, because FIP's live playlist never holds
+  1 MiB. Windows' own `MediaPlayer`, also Media Foundation, opens the same streams in 1-2 s, HLS
+  included, so the wait is in how BASS hands the stream to Media Foundation.
+  `BASS_CONFIG_VERIFY`, `VERIFY_NET` and `NET_PREBUF_WAIT` make no difference. BASS_AAC would
+  bypass Media Foundation, but it's built on FAAD2, which is GPL. Android decodes AAC with its
+  own codecs and isn't affected. Whether a normal (non-Insider) Windows 11 is affected is
+  still open.
 - MP3, Ogg Vorbis and Opus play. Titles arrive from ICY and from Ogg comments. The Opus
   station tried sends no title, so Opus titles are unchecked.
 - An HTTP 404 gives `FileOpen`. A web page and a real unsupported format both give
@@ -219,3 +223,15 @@ Each check names the station to pick in the app, what to do, and what passes.
 - **BASSHLS doesn't recognize a chunked playlist.** The relay sends playlists with a length.
 - **`ChannelGetInfo().Plugin` doesn't name BASSHLS on Android**, so the app recognizes HLS by
   its `EXTINF` tag.
+
+## BASS problems, in short
+
+| Platform | Problem | Status |
+|---|---|---|
+| Windows | AAC opens only after 1 MiB has been downloaded (50-200 s); HLS AAC doesn't play at all | Open. Next: try a non-Insider Windows 11; fallback: decode AAC/HLS with Windows' own media stack and feed the audio into BASS |
+| Android | A .NET GC during connect drops 15-45% of attempts | Mitigated: the app retries at once. Proven fix: open streams on a Java thread |
+| Android | The read timeout doesn't catch a stall with a download callback set, or on a chunked stream | Worked around: the app's own stall watchdog |
+
+Also for #7, though not bugs of the same kind: BASS_SSL is built on OpenSSL 1.1.1w, which is out
+of support, and it needs an attribution notice; and BASSHLS replays up to 30 s after a reconnect.
+The 30 s wait on plain-http pages is fixed with `BASS_CONFIG_AM_DISABLE = 2`.
