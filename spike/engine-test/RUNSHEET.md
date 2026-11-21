@@ -247,3 +247,20 @@ Each check names the station to pick in the app, what to do, and what passes.
 Also for #7, though not bugs of the same kind: BASS_SSL is built on OpenSSL 1.1.1w, which is out
 of support, and it needs an attribution notice; and BASSHLS replays up to 30 s after a reconnect.
 The 30 s wait on plain-http pages is fixed with `BASS_CONFIG_AM_DISABLE = 2`.
+
+## The app owning every connection (Push check)
+
+The way around all of the above that #7 takes: the app downloads every stream itself with
+`HttpClient` (`SocketsHttpHandler`), takes the ICY titles out, and pushes the bytes into a BASS
+user stream (`STREAMFILE_BUFFERPUSH`), which only decodes. BASS then opens no connection, so a
+GC has nothing to break and no read timeout is needed, and no BASS_SSL either. **Push check**
+runs it for MP3 (https and plain http), AAC-LC, HE-AAC, Ogg Vorbis and Opus, 8 s each.
+
+- **Galaxy A73:** all six decoded, the first audio 0.2-2.2 s after the request, and all six again
+  with **GC in connect** on, a GC every 50 ms. BASS decodes AAC there with Android's codec, HE-AAC
+  at 44.1 kHz. Plain http worked without the cleartext setting: `SocketsHttpHandler` isn't
+  subject to Android's cleartext policy.
+- **Windows:** MP3, Ogg Vorbis and Opus decoded the same way. AAC is skipped there, since BASS
+  would hand it to Media Foundation and wait for 1 MiB; `windecode` decodes it instead.
+- HLS isn't in the check: its segments are MPEG-TS with ADTS inside, which `windecode` unpacks,
+  and pushed ADTS is what the AAC streams above test.
