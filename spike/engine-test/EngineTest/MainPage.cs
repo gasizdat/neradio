@@ -40,6 +40,8 @@ sealed class MainPage : ContentPage
         share.Clicked += async (_, _) => await ShareLog();
         var http = new Button { Text = "Test the app's own plain http" };
         http.Clicked += async (_, _) => await ProbeHttp();
+        var push = new Button { Text = "Push check" };
+        push.Clicked += async (_, _) => await PushCheck.Run(Player.Instance.GcInConnect);
 
         var equalizer = new Grid { ColumnDefinitions = { new(GridLength.Auto), new(GridLength.Star) }, ColumnSpacing = 8 };
         for (var band = 0; band < BandNames.Length; band++)
@@ -75,6 +77,7 @@ sealed class MainPage : ContentPage
                     _rate,
                     equalizer,
                     Row(share, http),
+                    push,
                     _log,
                 },
             },
