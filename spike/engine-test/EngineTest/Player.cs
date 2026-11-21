@@ -71,6 +71,8 @@ sealed class Player
         public DateTime ConnectedAt { get; } = DateTime.UtcNow;
         public DateTime LastSegmentAt { get; set; } = DateTime.UtcNow;
         public double SegmentSeconds { get; set; } = 10;
+        public long Downloaded { get; set; }
+        public DateTime LastDataAt { get; set; } = DateTime.UtcNow;
         public bool Lost { get; set; }
         public bool SwitchAtOnce { get; set; }
 
@@ -322,7 +324,8 @@ sealed class Player
 
     void DownloadEnded(int channel)
     {
-        if (channel != _current?.Handle)
+        // On Windows, BASS's read timeout can end a stream the stall watchdog has already lost.
+        if (channel != _current?.Handle || _current.Lost)
             return;
         var played = DateTime.UtcNow - _current.ConnectedAt;
         Log.Write("lost", $"#{_current.Request}: download ended after {played.TotalSeconds:F0} s");
@@ -513,6 +516,22 @@ sealed class Player
             if (silent.TotalSeconds > 10 + source.SegmentSeconds)
             {
                 Log.Write("lost", $"#{source.Request}: no new HLS segment for {silent.TotalSeconds:F0} s (limit 10 + {source.SegmentSeconds} s)");
+                Lose(DateTime.UtcNow - source.ConnectedAt);
+            }
+        }
+        // BASS's read timeout never fires on Android, so a stalled stream would play silence forever.
+        if (source is { IsHls: false, Lost: false })
+        {
+            var downloaded = Bass.StreamGetFilePosition(source.Handle, FileStreamPosition.Download);
+            if (downloaded != source.Downloaded)
+            {
+                source.Downloaded = downloaded;
+                source.LastDataAt = DateTime.UtcNow;
+            }
+            var stalled = DateTime.UtcNow - source.LastDataAt;
+            if (stalled.TotalSeconds > 10)
+            {
+                Log.Write("lost", $"#{source.Request}: no new data for {stalled.TotalSeconds:F0} s (limit 10 s)");
                 Lose(DateTime.UtcNow - source.ConnectedAt);
             }
         }

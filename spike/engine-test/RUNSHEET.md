@@ -167,7 +167,9 @@ Each check names the station to pick in the app, what to do, and what passes.
 - An HTTP 404 gives `FileOpen`. A web page and a real unsupported format both give
   `FileFormat`. So the app tells them apart by the content type, which BASS reports.
 - A server close fires BASS's "download ended" sync, and BASS doesn't reconnect a live
-  stream by itself. A stall is caught by BASS's read timeout (`NET_READTIMEOUT`, set to 10 s).
+  stream by itself. On Windows a stall is caught by BASS's read timeout (`NET_READTIMEOUT`, set
+  to 10 s). On Android that timeout never fires, so the app has its own watchdog: no new data
+  for 10 s counts as a lost connection.
 - **BASS's pre-buffer doesn't apply to decoding streams in a mixer.** They play as soon as
   any data arrives. So the app holds a new connection paused until its buffer reaches the
   pre-buffer level. #7's engine seam needs the same.
