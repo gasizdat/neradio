@@ -315,7 +315,8 @@ sealed class Player
     void Failed(int request, Errors error, long elapsed, string? http, string? type, bool switchAtOnce)
     {
         var page = type?.Contains("text/", StringComparison.OrdinalIgnoreCase) == true;
-        var kind = error == Errors.FileFormat && !page ? "format not supported" : "failed connection";
+        // BASS also reports FileFormat for a connection that closes before the server answers.
+        var kind = error == Errors.FileFormat && http is not null && !page ? "format not supported" : "failed connection";
         Log.Write("connect", $"#{request}: failed after {elapsed} ms: {error} ({(int)error}); {http ?? "no HTTP status"}; {type ?? "no content type"} => {kind}");
         if (kind == "format not supported")
         {
