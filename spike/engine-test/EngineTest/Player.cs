@@ -152,6 +152,7 @@ sealed class Player
         _url = url;
         _lastTitle = null;
         _wait = -1;
+        _recorder.StationChanged();
         Log.Write("play", $"{station}: {url} (buffer {NetBuffer} ms, pre-buffer {PreBuffer}%)");
         Start("user played");
     });

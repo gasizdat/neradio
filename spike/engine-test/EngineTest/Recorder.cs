@@ -35,15 +35,20 @@ sealed class Recorder
     {
         lock (_gate)
         {
+            // Noted while recording is off too, so a recording switched on mid-stream knows it's Ogg.
+            _ogg |= data.IndexOf("OggS\0"u8) >= 0;
             if (!_on)
                 return;
             var newStream = OggStreamStart(data);
-            if (newStream >= 0 && _file is not null)
+            if (newStream >= 0)
             {
-                _file.Write(data[..newStream]);
+                _file?.Write(data[..newStream]);
                 Close();
                 data = data[newStream..];
             }
+            // An Ogg file needs its stream's header pages, so mid-stream it waits for the next stream.
+            else if (_ogg && _file is null)
+                return;
             _file ??= Open(data);
             _file.Write(data);
         }
@@ -61,10 +66,19 @@ sealed class Recorder
         }
     }
 
+    public void StationChanged()
+    {
+        lock (_gate)
+        {
+            _ogg = false;
+            _title = null;
+            Close();
+        }
+    }
+
     FileStream Open(ReadOnlySpan<byte> first)
     {
         Directory.CreateDirectory(Folder);
-        _ogg = first.StartsWith("OggS"u8);
         var extension = _ogg ? ".ogg" : first.Length > 1 && first[0] == 0xFF && (first[1] & 0xF6) == 0xF0 ? ".aac" : ".mp3";
         // Windows' rules, not the current OS's: the files get copied to a PC.
         var title = new string((_title ?? "untitled").Select(c => c < ' ' || "\"*/:<>?\\|".Contains(c) ? '_' : c).Take(80).ToArray());
