@@ -165,11 +165,13 @@ Each check names the station to pick in the app, what to do, and what passes.
 - MP3, Ogg Vorbis and Opus play. Titles arrive from ICY and from Ogg comments. The Opus
   station tried sends no title, so Opus titles are unchecked.
 - An HTTP 404 gives `FileOpen`. A web page and a real unsupported format both give
-  `FileFormat`. So the app tells them apart by the content type, which BASS reports.
+  `FileFormat`. So the app tells them apart by the content type, which BASS reports. A
+  connection that closes before the server answers also gives `FileFormat`, with no HTTP
+  status, so that counts as a failed connection too.
 - A server close fires BASS's "download ended" sync, and BASS doesn't reconnect a live
   stream by itself. On Windows a stall is caught by BASS's read timeout (`NET_READTIMEOUT`, set
-  to 10 s). On Android that timeout never fires, so the app has its own watchdog: no new data
-  for 10 s counts as a lost connection.
+  to 10 s). On Android that timeout doesn't fire in this app (see below), so the app has its
+  own watchdog: no new data for 10 s counts as a lost connection.
 - **BASS's pre-buffer doesn't apply to decoding streams in a mixer.** They play as soon as
   any data arrives. So the app holds a new connection paused until its buffer reaches the
   pre-buffer level. #7's engine seam needs the same.
@@ -180,3 +182,40 @@ Each check names the station to pick in the app, what to do, and what passes.
   By default BASSHLS starts 30 s behind live.
 - The Android media session is the platform's own `android.media.session.MediaSession`, so no
   library is needed.
+
+## Found on the phone (Galaxy A73, Android 16, 21 Nov)
+
+- **HTTPS needs the BASS_SSL add-on on Android.** From Android 7 on, apps can't load the
+  system's OpenSSL, and without the add-on every `https://` stream fails at once with `SSL`.
+  The build fetches it. It's based on OpenSSL 1.1.1w, which is out of support and needs an
+  attribution notice: #7 has to decide on that.
+- **AAC and HLS AAC play on Android**, so the 1 MB AAC problem above is Windows-only.
+- **A .NET GC during `BASS_StreamCreateURL` makes BASS drop the attempt.** It hangs up before
+  any HTTP status, with `FileOpen` or `Timeout`, in 15-45% of attempts. A GC forced 250 ms into
+  each attempt made 20 of 20 fail; `curl` on the phone and the Windows app never fail this way.
+  `MONO_THREADS_SUSPEND=hybrid` doesn't help. Opening the stream on a plain Java thread, through
+  BASS's own Java API, does: with the same GC forced into every attempt, 20 of 20 connected.
+  The app retries a dropped attempt at once instead, up to 3 times, without moving on in the
+  waits.
+- **BASS's read timeout fires on Android only without a download callback and on a stream
+  that isn't chunked.** Against a plain HTTP/1.0 server on the phone's own loopback it fires
+  (with a 5 s or a 10 s timeout, from a .NET or a Java thread); with the app's download callback
+  set, or through the relay's chunked stream, it never does. The app needs the callback for
+  recording, so it keeps its own watchdog.
+- **A page that isn't audio, over plain http, held each attempt for 30 s.** When BASS's own
+  decoders reject a stream, BASS hands the URL to Android's media extractor, which fetches it
+  again with the platform's HTTP stack; the cleartext policy blocks that, and Android retries
+  for 30 s. `BASS_CONFIG_AM_DISABLE = 2` turns that fallback off but keeps Android's AAC
+  decoder: a Wi-Fi login page now fails in milliseconds.
+- **Servers send a fixed amount at once on connecting, not a fixed duration** (check 22):
+  SomaFM and Radio Paradise send about 256 KB, so 11 s at 192 kbps but 35 s at 64 kbps; DLF's
+  Opus about 80 KB. BASSHLS starts 30 s behind live anyway.
+- **Recording:** a title can hold characters Windows doesn't allow in a file name, so names
+  follow Windows' rules; and an Ogg recording switched on mid-stream waits for the next stream,
+  since without the stream's header pages it can't be decoded.
+- **BASSHLS starts each connection 30 s behind live** (`BASS_CONFIG_HLS_DELAY`) and can't seek in
+  a live stream, so after an HLS reconnect up to 30 s already heard play again. #7 needs to skip
+  the new connection forward to the first segment not yet played.
+- **BASSHLS doesn't recognize a chunked playlist.** The relay sends playlists with a length.
+- **`ChannelGetInfo().Plugin` doesn't name BASSHLS on Android**, so the app recognizes HLS by
+  its `EXTINF` tag.
