@@ -39,8 +39,8 @@ The conventions it depends on:
 
 The app is MIT-licensed; these apply from the first design proposal, not just when coding.
 
-- No GPL-licensed dependencies while BASS (closed source) is still an audio-engine candidate — the
-  two can't ship in one app.
+- No GPL-licensed dependencies. The audio engine is BASS (#8), which is closed source, and the two
+  can't ship in one app.
 - Never commit BASS binaries to the repo; fetch them at build time.
 
 ## Commits
@@ -63,6 +63,7 @@ The app is MIT-licensed; these apply from the first design proposal, not just wh
   mechanical change across many call sites is the exception: one branch and PR for the whole sweep.
 - A PR body names each issue it fixes as `Fixes #N`; `Related: #N` is only for issues it leaves
   open.
+- A PR that completes a row of #22, the research stage's plan, says `Related: #22`.
 - Never delete a `drafts/ai/*` branch, local or remote, even after it's merged — omit
   `--delete-branch` on `gh pr merge`. Likewise, don't clean up old `git stash` entries; they're kept
   deliberately as recovery points.

@@ -69,7 +69,7 @@ A statement marked *(open: Qn)* depends on a question in [Open and unclear quest
    - Screens: Browse/Search, Groups, Playlists, Recordings, Now Playing, Settings (equalizer, background, list sources).
    - Phone layout: bottom tabs and a mini-player. Desktop layout: a side bar and a permanent player bar. Both layouts are designed from the start.
 
-5. The application must aggressively restore lost connections to radio stations *(open: Q30)*.
+5. The application must aggressively restore lost connections to radio stations.
    - The app keeps retrying, waiting longer between attempts up to a set maximum.
    - A stalled stream (still connected, but no data arriving) counts as a lost connection.
    - When the network changes (Wi-Fi to cellular and back), the app reconnects at once instead of waiting for a timeout.
@@ -106,9 +106,9 @@ The features below were missing from the original brief.
 
 The original open questions and where they stand:
 
-1. **Programming language: C#.** A working choice until the audio-engine test below.
+1. **Programming language: C#.**
 
-2. **Framework: .NET MAUI.** A working choice until the audio-engine test. Linux is out of scope, so Avalonia, the alternative that supports it, isn't needed.
+2. **Framework: .NET MAUI.** Linux is out of scope, so Avalonia, the alternative that supports it, isn't needed.
    - Electron is ruled out: it doesn't run on Android.
    - A self-hosted web app is ruled out. Many streams send no CORS headers, which leaves the equalizer and visualizer silent. A browser can't read the track titles embedded in a stream, so there would be no titles, history, title-based switching or recording splits. An https page can't play http streams. And Android needs native code for background playback anyway.
 
@@ -118,11 +118,11 @@ The original open questions and where they stand:
 
 5. **Naming and repository: neradio**, at `github.com/gasizdat/neradio` *(open: Q37–Q39)*.
 
-**Audio engine: open** *(open: Q7)*. Every audio feature above needs direct access to the stream's bytes and audio samples, so the engine decides more than the UI framework does.
+**Audio engine: BASS**, through ManagedBass, chosen by the engine test (#8). Every audio feature above needs direct access to the stream's bytes and audio samples, so the engine decides more than the UI framework does.
 
-- BASS (through ManagedBass) is the first candidate. It's built for internet radio, and its free non-commercial license fits an app with no ads and no income. It's closed source, so the app can't go on F-Droid.
-- The alternatives are LibVLCSharp, or a native engine per platform (Media3/ExoPlayer on Android, Media Foundation or NAudio on Windows).
-- Each candidate gets a 2–3 day test on a real Android device; an emulator doesn't reproduce power saving or real network changes. It passes when it delivers:
+- BASS is built for internet radio, and its free non-commercial license fits an app with no ads and no income. It's closed source, so the app can't go on F-Droid.
+- The alternatives were LibVLCSharp, or a native engine per platform (Media3/ExoPlayer on Android, Media Foundation or NAudio on Windows). They weren't tested, since BASS passed.
+- Each candidate was to get a 2–3 day test on a real Android device; an emulator doesn't reproduce power saving or real network changes. It passes when it delivers:
   - every stream format in Feature 12;
   - track-title changes as events (UC5, UC6, UC8);
   - 30+ minutes of background playback with working controls (Feature 11);
@@ -132,6 +132,8 @@ The original open questions and where they stand:
   - raw-stream recording split at title changes (UC8).
 
   Whatever the engine fails, the app has to build itself.
+- BASS passed in an afternoon's session on a Galaxy A73 (Android 16), and on a Windows 11 PC, instead of 2–3 days: see the [PC](https://github.com/gasizdat/neradio/issues/8#issuecomment-6959503878) and [phone](https://github.com/gasizdat/neradio/issues/8#issuecomment-7064295467) results. The problems it found in BASS's own connections, listed in [#8's summary](https://github.com/gasizdat/neradio/issues/8#issuecomment-7064789810), don't arise because the app makes every connection itself and BASS only decodes; on Windows, Windows' own decoder decodes AAC (#7's design).
+- What the session left open is checked by hand in #7's tasks, on the owner's phone, in place of the days of use: Wi-Fi to cellular (4.3), an hour unplugged with the screen off and a real headset button (4.1), and headphones unplugged on Windows (5.2). Listening for equalizer glitches goes to #14.
 
 ---
 
@@ -145,12 +147,12 @@ Where a question has a proposed default, it's given after it. An answered questi
 - **Q2.** Is sync between devices (groups, overrides, playlists) in scope? *Default: not in the first version.*
 - **Q3. Resolved:** Features 9–12 (search and filter, sleep timer, background playback, stream formats) are in scope.
 - **Q4. Resolved:** no income is planned, which keeps the app within BASS's free non-commercial license.
-- **Q5.** Do BASS's redistribution terms allow shipping it in a free app on Google Play and the Microsoft Store? Read the terms on un4seen's site before the first release.
+- **Q5. Resolved (#8):** yes. [un4seen's terms](https://www.un4seen.com/bass.html) make BASS free for a non-commercial entity, such as an individual, that makes no money from its product, through sales, advertising or otherwise. They don't mention app stores. BASSmix and BASSOPUS are free to use with BASS, and BASS_FX may be passed on as long as no fee is charged. The app makes its own https connections, so it ships neither BASS_SSL nor the OpenSSL it's built on (#7). Making any money from the app would need a paid BASS license for each platform.
 - **Q6.** Where will the app be distributed: Google Play and the Microsoft Store only, or also direct downloads (GitHub Releases, an APK)? F-Droid is out while BASS is the engine.
 
 ## Audio engine and UI
 
-- **Q7.** Which audio engine? It's decided by the engine test in Decisions: BASS first, then LibVLCSharp or native engines.
+- **Q7. Resolved (#8):** BASS, through ManagedBass. See Audio engine in Decisions.
 - **Q8.** MAUI with XAML, or MAUI Blazor Hybrid? Blazor Hybrid lets the HTML concept demo become the real UI.
 
 ## Station lists and catalog
@@ -185,7 +187,7 @@ Where a question has a proposed default, it's given after it. An answered questi
 
 - **Q28. Resolved (#7):** retry at once, then after waits of 1, 2, 4, 8 and 16 seconds, then every 30 seconds, until playback stops. The waits start over when the user plays a station, when the network changes, and once audio has played for 60 seconds.
 - **Q29. Resolved (#7):** 10 seconds without data. The same limit fails a connection attempt that gets no audio.
-- **Q30.** How big is the buffer? A bigger one rides out longer drops but delays starting and switching stations. Set it from the engine test.
+- **Q30. Resolved (#8):** playback starts once about 4 seconds of audio are buffered, and the buffer holds up to 60 seconds. On connecting, servers send 11–35 seconds of audio at once, so a buffer that size fills at once without delaying the start, and then rides out a drop of that length. In the test, audio started 0.6–3.7 s after Play and 3.6 s after the network came back, inside the 5-second targets. A title can then arrive up to 35 s before its audio plays, so the shown title has to wait for the audio (#7).
 - **Q31. Resolved (#7):** on Android, the app stops for a call or an alarm and plays again after it, lowers its volume for a short prompt, and stops without starting again when another app starts playing music. On Windows, the system handles calls.
 - **Q41.** Should the app, as an option, keep a lower-bitrate stream of the station downloading alongside the one playing, and switch to it when the main stream's buffer runs out? *Default: not in the first version. Switching to a lower-bitrate stream after the main one stalls is considered first: it uses no extra data, but leaves a short gap.*
   - It helps when the network gets too slow for the main stream, or when only the main stream's server fails.

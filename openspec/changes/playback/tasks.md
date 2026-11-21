@@ -1,18 +1,19 @@
 # Tasks
 
-Implementation starts once the engine is chosen (#8) and the project skeleton (#9) is on `main`. Groups 1 and 2 go in the core library and its tests. Each scenario they cover gets a unit test that mirrors its WHEN/THEN, running on the fake engine and a fake `TimeProvider`. Groups 3 to 5 are checked by hand, as design.md says, and the PR lists each scenario with its result.
+#8 chose BASS. Implementation starts once the project skeleton (#9) is on `main`. Groups 1 and 2 go in the core library and its tests. Each scenario they cover gets a unit test that mirrors its WHEN/THEN, running on the fake engine and a fake `TimeProvider`. Groups 3 to 5 are checked by hand, as design.md says, and the PR lists each scenario with its result.
 
 ## 1. Player logic
 
 - [ ] 1.1 Add the engine seam and a fake engine for the tests, as in design.md. Verify the solution builds for every target.
-- [ ] 1.2 Add the player: one station at a time, stopping, connection rounds, the 10-second limit, the waits, and skipped formats. Verify that tests pin every scenario of these requirements, including the ones where something must not happen:
+- [ ] 1.2 Add the connections: an `HttpClient` on a `SocketsHttpHandler` that asks for ICY metadata, takes it out of the stream and passes the rest to the engine, with the HTTP status, the content type and the bytes arriving; and HLS: the variant with the highest bandwidth, each segment once and in order, the AAC taken out of MPEG-TS and packed-audio segments, and the next segment after a reconnect. Verify that tests pin, on a fake HTTP handler with recorded stream data, the ICY metadata taken out of the stream, "Server answers with an error" and "Wi-Fi login page", and every scenario of "No repeated audio after an HLS reconnect".
+- [ ] 1.3 Add the player: one station at a time, stopping, connection rounds, the 10-second limit, the waits, and skipped formats. Verify that tests pin every scenario of these requirements, including the ones where something must not happen:
   - "One station at a time" and "Stopping a live stream";
   - "Lost connections" and "Connection rounds";
   - "Waits between rounds" and "Unsupported formats".
-- [ ] 1.3 Add network-change restarts: a network change starts the waits over, with a round at once. Verify that tests pin the round logic of "Network changes": a playing connection is dropped, a round under way is abandoned, a wait in progress is skipped, and "First round on the new network fails".
-- [ ] 1.4 Add playlist URL resolution for `.pls`, `.m3u` and `.m3u8`, telling HLS apart, with a download, limited to 10 seconds, each time a round reaches the playlist. Verify that tests pin every scenario of "Playlist URLs".
-- [ ] 1.5 Add track titles: ICY title parsing with the UTF-8, else Windows-1252 rule, Ogg comment titles, and the rules for empty and repeated titles. Verify that tests pin every scenario of "Track titles" and "Repeated titles aren't changes".
-- [ ] 1.6 Add the kinds of stop: the user's, an interruption, and another stop by the system. When an interruption ends, the station plays again from its primary stream, with the waits started over and the last title kept, unless any stop came in the meantime. Verify that tests pin the player's part of "Phone calls and other interruptions": the station plays again from its primary stream with the waits started over, the same title isn't a change, and nothing plays again after a stop by the user or by the system.
+- [ ] 1.4 Add network-change restarts: a network change starts the waits over, with a round at once. Verify that tests pin the round logic of "Network changes": a playing connection is dropped, a round under way is abandoned, a wait in progress is skipped, and "First round on the new network fails".
+- [ ] 1.5 Add playlist URL resolution for `.pls`, `.m3u` and `.m3u8`, telling HLS apart, with a download, limited to 10 seconds, each time a round reaches the playlist. Verify that tests pin every scenario of "Playlist URLs".
+- [ ] 1.6 Add track titles: ICY title parsing with the UTF-8, else Windows-1252 rule, Ogg comment titles, the rules for empty and repeated titles, and each title held until decoding reaches it. Verify that tests pin every scenario of "Track titles", "Repeated titles aren't changes" and "Titles show with their audio".
+- [ ] 1.7 Add the kinds of stop: the user's, an interruption, and another stop by the system. When an interruption ends, the station plays again from its primary stream, with the waits started over and the last title kept, unless any stop came in the meantime. Verify that tests pin the player's part of "Phone calls and other interruptions": the station plays again from its primary stream with the waits started over, the same title isn't a change, and nothing plays again after a stop by the user or by the system.
 
 ## 2. Sleep timer
 
@@ -20,11 +21,11 @@ Implementation starts once the engine is chosen (#8) and the project skeleton (#
 
 ## 3. Engine adapter
 
-- [ ] 3.1 Implement the engine seam with the engine chosen in #8. That covers opening streams; the data, end, failure, unsupported-format and title events, with HTTP errors and web pages reported as failures; the volume; and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
+- [ ] 3.1 Implement the engine seam with BASS, through ManagedBass, with BASSmix and BASSOPUS fetched at build time: a push stream for each connection in one mixer, held paused until about 4 seconds of its audio are buffered, with a 60-second buffer; `BASS_CONFIG_AM_DISABLE` set to 2 on Android; and on Windows, AAC decoded by Windows' own AAC decoder through NAudio.Wasapi and pushed into the mixer. That covers the playing, buffer-ran-out, unsupported-format and Ogg title events; how far decoding has got; the volume; and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
   - "Stream formats" and "Plain-http streams";
   - "Server answers with an error" and "Wi-Fi login page" of "Unsupported formats";
-  - "Track titles", with real ICY and Ogg streams;
-  - "HLS segments" and "Stalled HLS stream";
+  - "Track titles" and "Titles show with their audio", with real ICY and Ogg streams;
+  - "HLS segments", "Stalled HLS stream" and "HLS reconnect";
   - "Buffered audio while reconnecting".
 
 ## 4. Android
@@ -35,8 +36,7 @@ Implementation starts once the engine is chosen (#8) and the project skeleton (#
   - "Another app takes over";
   - "Audio output changes";
   - "Phone call" of the sleep timer.
-- [ ] 4.3 Allow cleartext traffic in the manifest. Verify by hand "http stream on Android".
-- [ ] 4.4 Forward MAUI's connectivity changes to the player. Verify by hand on a real phone "Wi-Fi to cellular" and "Airplane mode on and off".
+- [ ] 4.3 Forward MAUI's connectivity changes to the player. Verify by hand on a real phone "Wi-Fi to cellular" and "Airplane mode on and off".
 
 ## 5. Windows
 
