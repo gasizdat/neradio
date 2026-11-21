@@ -66,8 +66,8 @@ sealed class Recorder
         Directory.CreateDirectory(Folder);
         _ogg = first.StartsWith("OggS"u8);
         var extension = _ogg ? ".ogg" : first.Length > 1 && first[0] == 0xFF && (first[1] & 0xF6) == 0xF0 ? ".aac" : ".mp3";
-        var invalid = Path.GetInvalidFileNameChars();
-        var title = new string((_title ?? "untitled").Select(c => invalid.Contains(c) ? '_' : c).Take(80).ToArray());
+        // Windows' rules, not the current OS's: the files get copied to a PC.
+        var title = new string((_title ?? "untitled").Select(c => c < ' ' || "\"*/:<>?\\|".Contains(c) ? '_' : c).Take(80).ToArray());
         var path = Path.Combine(Folder, $"{DateTime.Now:yyyyMMdd-HHmmss} {title}{extension}");
         Log.Write("record", $"new file {Path.GetFileName(path)}");
         return new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
