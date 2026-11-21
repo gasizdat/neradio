@@ -2,9 +2,9 @@
 
 ## Why
 
-Playing a station is the app's core, and the audio engine is chosen by how well it does that on a real Android phone (#8). The engine test needs a fixed list of what "plays well" means, and today the brief gives only targets such as "recover within a few seconds". This change turns Features 5, 10, 11 and 12 into scenarios that the engine test checks one by one, and that the app's implementation is later held to.
+Playing a station is the app's core, and the audio engine was chosen by how well it does that on a real Android phone (#8). The engine test needed a fixed list of what "plays well" means, and the brief gave only targets such as "recover within a few seconds". This change turns Features 5, 10, 11 and 12 into scenarios that the engine test checked one by one, and that the app's implementation is held to.
 
-It settles Q28 (retries), Q29 (stalled streams) and Q31 (calls and other apps' sound). Q30 (buffer size) stays open: the engine test sets it.
+It settles Q28 (retries), Q29 (stalled streams) and Q31 (calls and other apps' sound). The engine test chose BASS and settled Q30 (buffer size).
 
 ## What Changes
 
@@ -26,6 +26,8 @@ Choices that go beyond the brief and the proposed defaults, for review:
   - Only titles carried in the stream itself are read: ICY metadata in MP3 and AAC streams, and comments in Ogg streams. HLS streams carry titles in no single standard way, so an HLS station counts as one that reports no titles, which UC5 already allows for.
   - A title that repeats the current one isn't a change, even right after a reconnect or a call. Otherwise every reconnect would split a recording or add a duplicate to the history. The last title is forgotten only when the user plays a station.
   - An empty title hides the shown title, but isn't a change. The next title is compared with the last one that wasn't empty, so a blank followed by the same title isn't a change either.
+  - A title is shown, and counts as a change, when its audio plays. On connecting, a server sends up to 35 seconds of audio at once, so a title can arrive that far ahead of its audio.
+- **An HLS reconnect doesn't repeat audio.** The station goes on with the segment after the last one the app downloaded, or from the live broadcast if the playlist has moved past it.
 - **How the formats are read.** "Ogg/Opus" in Feature 12 is read as both Ogg Vorbis and Opus. AAC includes HE-AAC, which many low-bitrate stations use. HLS means streams with AAC audio.
 - **"Within a few seconds" becomes 5 seconds.** After switching from Wi-Fi to cellular, any silence lasts at most 5 seconds. After airplane mode is turned off, audio returns within 5 seconds of the phone reconnecting to a network.
 - **The details of retrying:**
@@ -60,9 +62,11 @@ None.
 
 ## Impact
 
-- **The engine test (#8):** these scenarios are its pass list, together with the equalizer, visualizer and recording criteria in Decisions. Q30's buffer size must let the 5-second targets hold.
-- **Code, once #8 and #9 are done:**
-  - Playback logic in the core library: retries, stall detection, playlist URLs, track titles and the sleep timer.
+- **The engine test (#8):** these scenarios were its pass list, together with the equalizer, visualizer and recording criteria in Decisions.
+- **Dependencies:** BASS, through ManagedBass, with BASSmix and BASSOPUS, fetched at build time. The app makes its own connections, so BASS_SSL and BASSHLS aren't used. On Windows, NAudio.Wasapi (MIT) gives access to Windows' own AAC decoder.
+- **Code, once #9 is done:**
+  - Playback logic in the core library: the connections, including HLS, retries, stall detection, playlist URLs, track titles and the sleep timer.
+  - The BASS adapter in the app: decoding, the mixer, and AAC on Windows.
   - Platform code in the app: background playback, system media controls and audio focus on Android, and system media controls on Windows.
-- **Android manifest:** new permissions for a media-playback foreground service and for notifications, and a setting that allows plain-http traffic.
+- **Android manifest:** new permissions for a media-playback foreground service and for notifications.
 - `doc/entrypoint/UserStory.md`: Q28, Q29 and Q31 are marked Resolved.
