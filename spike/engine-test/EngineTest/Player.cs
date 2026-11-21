@@ -43,7 +43,6 @@ sealed class Player
     readonly Timer _ticker;
     readonly int _mixer;
     readonly int _eq;
-    readonly int _hlsPlugin;
 
     Source? _current;
     Source? _next;
@@ -129,7 +128,6 @@ sealed class Player
             Bass.GlobalStreamVolume = 0;
         var opus = LoadPlugin("bassopus");
         var hls = LoadPlugin("basshls");
-        _hlsPlugin = hls.Handle;
         Log.Write("start", $"BASS {Bass.Version}, BASSmix {BassMix.Version}, BASS_FX {BassFx.Version}, BASSOPUS {opus.Version}, BASSHLS {hls.Version}");
 
         _mixer = BassMix.CreateMixerStream(48000, 2, BassFlags.Float | BassFlags.MixerNonStop);
@@ -259,7 +257,8 @@ sealed class Player
         }
 
         var info = Bass.ChannelGetInfo(handle);
-        var isHls = info.Plugin == _hlsPlugin;
+        // info.Plugin doesn't name BASSHLS on Android, where Android's own codec decodes the segments.
+        var isHls = Bass.ChannelGetTags(handle, (TagType)0x14000) != IntPtr.Zero;
         var bitrate = Bass.ChannelGetAttribute(handle, ChannelAttribute.Bitrate);
         Format = $"{info.ChannelType} {info.Frequency} Hz {info.Channels} ch {bitrate:F0} kbps{Aac(head, info.Frequency)}";
         Log.Write("connect", $"#{request}: connected in {elapsed} ms: {Format}; {http}; {type}");
