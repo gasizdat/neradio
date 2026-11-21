@@ -126,6 +126,12 @@ sealed class Player
             Log.Write("start", $"BASS init failed: {Bass.LastError}");
         Bass.NetTimeOut = 10000;
         Bass.NetReadTimeOut = 10000;
+#if ANDROID
+        // Otherwise BASS hands a stream its own decoders reject to Android's media extractor, which
+        // fetches the URL again itself; the cleartext policy blocks that for plain http, and it keeps
+        // retrying for 30 s. 2 keeps Android's AAC decoder, BASS's only way to decode AAC here.
+        Bass.Configure((Configuration)58, 2); // BASS_CONFIG_AM_DISABLE: all but AAC/ADTS
+#endif
         // For unattended desk runs: the volume applies after the mixer's DSP, so measurements hold.
         if (Environment.GetEnvironmentVariable("ENGINETEST_MUTE") == "1")
             Bass.GlobalStreamVolume = 0;
