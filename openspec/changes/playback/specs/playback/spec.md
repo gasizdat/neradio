@@ -146,6 +146,13 @@ A title equal to the last title that wasn't empty SHALL NOT count as a title cha
 - **WHEN** the user stops a station whose last title was `Artist A - Song 1`, plays it again, and the stream reports `Artist A - Song 1`
 - **THEN** that counts as a title change
 
+### Requirement: Titles show with their audio
+A title SHALL be shown, and SHALL count as a title change, when the audio that follows it in the stream starts to play, not when it's downloaded.
+
+#### Scenario: Title arrives ahead of its audio
+- **WHEN** a stream reports a new title while 30 seconds of audio are buffered ahead of it
+- **THEN** the app shows the new title about 30 seconds later, when that audio plays, and the title change counts then
+
 ### Requirement: Lost connections
 The app SHALL count a connection as lost when it fails, when the stream ends, or when no data has arrived for 10 seconds. An HLS stream receives its data a segment at a time, so its limit SHALL be 10 seconds plus its playlist's target duration. A connection attempt that gets no audio data within 10 seconds SHALL count as failed.
 
@@ -224,6 +231,17 @@ While it reconnects, the app SHALL keep playing the audio it has already buffere
 #### Scenario: Short drop
 - **WHEN** the server closes the connection, and the app reconnects before the buffered audio runs out
 - **THEN** the station plays on without silence
+
+### Requirement: No repeated audio after an HLS reconnect
+After an HLS stream reconnects, the station SHALL go on with the segment that follows the last one the app downloaded, so no audio plays twice. When the playlist no longer lists that segment, the station SHALL go on from the live broadcast.
+
+#### Scenario: HLS reconnect
+- **WHEN** an HLS stream's connection is lost after the app downloaded its segment 100, and the playlist the app reconnects to lists segments 98 to 105
+- **THEN** the station goes on with segment 101, and nothing from segments 98 to 100 plays again
+
+#### Scenario: HLS reconnect after a long outage
+- **WHEN** an HLS stream reconnects, and its playlist no longer lists the segment that follows the last one the app downloaded
+- **THEN** the station goes on from the live broadcast
 
 ### Requirement: Background playback
 A station SHALL keep playing on Android with the screen off or another app in front, and on Windows with the app minimized or behind other windows.

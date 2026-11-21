@@ -132,8 +132,8 @@ The original open questions and where they stand:
   - raw-stream recording split at title changes (UC8).
 
   Whatever the engine fails, the app has to build itself.
-- BASS passed in an afternoon's session on a Galaxy A73 (Android 16), and on a Windows 11 PC, instead of 2–3 days: see the [PC](https://github.com/gasizdat/neradio/issues/8#issuecomment-6959503878) and [phone](https://github.com/gasizdat/neradio/issues/8#issuecomment-7064295467) results. Three BASS problems need workarounds in the app, listed in [#8's summary](https://github.com/gasizdat/neradio/issues/8#issuecomment-7064789810): its own stall watchdog, an immediate retry on Android, and AAC decoded by Windows' own media stack.
-- What the session left open is checked by hand in #7's tasks, on the owner's phone, in place of the days of use: Wi-Fi to cellular (4.4), an hour unplugged with the screen off and a real headset button (4.1), and headphones unplugged on Windows (5.2). Listening for equalizer glitches goes to #14.
+- BASS passed in an afternoon's session on a Galaxy A73 (Android 16), and on a Windows 11 PC, instead of 2–3 days: see the [PC](https://github.com/gasizdat/neradio/issues/8#issuecomment-6959503878) and [phone](https://github.com/gasizdat/neradio/issues/8#issuecomment-7064295467) results. The problems it found in BASS's own connections, listed in [#8's summary](https://github.com/gasizdat/neradio/issues/8#issuecomment-7064789810), don't arise because the app makes every connection itself and BASS only decodes; on Windows, Windows' own decoder decodes AAC (#7's design).
+- What the session left open is checked by hand in #7's tasks, on the owner's phone, in place of the days of use: Wi-Fi to cellular (4.3), an hour unplugged with the screen off and a real headset button (4.1), and headphones unplugged on Windows (5.2). Listening for equalizer glitches goes to #14.
 
 ---
 
@@ -147,7 +147,7 @@ Where a question has a proposed default, it's given after it. An answered questi
 - **Q2.** Is sync between devices (groups, overrides, playlists) in scope? *Default: not in the first version.*
 - **Q3. Resolved:** Features 9–12 (search and filter, sleep timer, background playback, stream formats) are in scope.
 - **Q4. Resolved:** no income is planned, which keeps the app within BASS's free non-commercial license.
-- **Q5. Resolved (#8):** yes. [un4seen's terms](https://www.un4seen.com/bass.html) make BASS free for a non-commercial entity, such as an individual, that makes no money from its product, through sales, advertising or otherwise. They don't mention app stores. BASSmix, BASSHLS and BASSOPUS are free to use with BASS, and BASS_FX may be passed on as long as no fee is charged. BASS_SSL, which Android needs for https, is built on OpenSSL, whose license asks for an attribution notice in the app (#7). Making any money from the app would need a paid BASS license for each platform.
+- **Q5. Resolved (#8):** yes. [un4seen's terms](https://www.un4seen.com/bass.html) make BASS free for a non-commercial entity, such as an individual, that makes no money from its product, through sales, advertising or otherwise. They don't mention app stores. BASSmix and BASSOPUS are free to use with BASS, and BASS_FX may be passed on as long as no fee is charged. The app makes its own https connections, so it ships neither BASS_SSL nor the OpenSSL it's built on (#7). Making any money from the app would need a paid BASS license for each platform.
 - **Q6.** Where will the app be distributed: Google Play and the Microsoft Store only, or also direct downloads (GitHub Releases, an APK)? F-Droid is out while BASS is the engine.
 
 ## Audio engine and UI
