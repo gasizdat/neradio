@@ -3,10 +3,9 @@ schema: spec-driven
 context: |
   neradio is a freeware, ad-free internet radio app for Windows and Android only. Linux, macOS
   and iOS are out of scope. Every design and task list covers both Windows and Android.
-  Stack: C# and .NET MAUI. The audio engine is chosen by a test on a real Android device; BASS
-  (through ManagedBass) is the first candidate.
-  The app is MIT-licensed. No GPL-licensed dependency while BASS (closed source) is still an
-  audio-engine candidate.
+  Stack: C# and .NET MAUI. The audio engine is BASS, through ManagedBass, chosen by the engine
+  test (#8). The problems that test found, and their workarounds, are in #8.
+  The app is MIT-licensed. BASS is closed source, so no GPL-licensed dependency.
   The brief is doc/entrypoint/UserStory.md: use cases (UCn), features, and the numbered open
   questions (Qn).
 
