@@ -50,6 +50,7 @@ sealed class Player
     volatile int _nextHandle;
     volatile int _request;
     int _wait = -1;
+    int _quickRetries;
     CancellationTokenSource? _delay;
     string? _url;
     string? _station;
@@ -210,15 +211,19 @@ sealed class Player
 
     // switchAtOnce: the new connection replaces the old one as soon as it's ready, even if
     // audio still arrives on the old one. Otherwise it waits for the old one's buffer to run out.
-    void Connect(string reason, bool switchAtOnce)
+    // atOnce: no wait, and the next wait stays where it was in Waits.
+    void Connect(string reason, bool switchAtOnce, bool atOnce = false)
     {
         _delay?.Cancel();
         var previous = _request;
         if (previous != 0)
             Native.BASS_StreamCancel(previous);
         var request = ++_request;
-        var wait = _wait < 0 ? 0 : Waits[Math.Min(_wait, Waits.Length - 1)];
-        _wait++;
+        if (_wait < 0)
+            _quickRetries = 0;
+        var wait = atOnce || _wait < 0 ? 0 : Waits[Math.Min(_wait, Waits.Length - 1)];
+        if (!atOnce)
+            _wait++;
         Log.Write("connect", $"#{request}: {reason}; wait {wait} s");
         _delay = new CancellationTokenSource();
         var url = _url!;
@@ -257,6 +262,7 @@ sealed class Player
             Failed(request, error, elapsed, http, type, switchAtOnce);
             return;
         }
+        _quickRetries = 0;
 
         var info = Bass.ChannelGetInfo(handle);
         // info.Plugin doesn't name BASSHLS on Android, where Android's own codec decodes the segments.
@@ -319,7 +325,12 @@ sealed class Player
             return;
         }
         SetState("reconnecting");
-        Connect("retry after a failed connection", switchAtOnce);
+        // On Android a .NET GC during BASS_StreamCreateURL makes BASS drop the attempt before any
+        // HTTP status. A few retries at once keep those drops from growing the waits.
+        var retryAtOnce = http is null && _quickRetries < 3;
+        if (retryAtOnce)
+            _quickRetries++;
+        Connect(retryAtOnce ? "retry after a dropped attempt" : "retry after a failed connection", switchAtOnce, retryAtOnce);
     }
 
     void DownloadEnded(int channel)
