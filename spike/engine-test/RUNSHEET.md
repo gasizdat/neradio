@@ -166,6 +166,15 @@ Each check names the station to pick in the app, what to do, and what passes.
   `BASS_CONFIG_VERIFY`, `VERIFY_NET` and `NET_PREBUF_WAIT` make no difference. BASS_AAC would
   bypass Media Foundation, but it's built on FAAD2, which is GPL. Android decodes AAC with its
   own codecs and isn't affected.
+- **The way around works** (`windecode/windecode.cs`). The app downloads the stream itself,
+  takes the ICY titles out, cuts the rest into ADTS frames and decodes them with Windows' own AAC
+  decoder: the Media Foundation transform itself, through NAudio's bindings (MIT), not a media
+  source, so nothing waits for 1 MiB. The audio goes into a BASS push stream in the mixer, with
+  the equalizer, and the spectrum stays live. HLS segments are MPEG-TS, unpacked by the app.
+  The test app's start level (3.75 s of audio) was reached after 3.1 s for AAC-LC, 2.1 s for
+  HE-AAC (the decoder switches to the doubled rate on its own) and 0.9 s for FIP's HLS, with
+  titles from ICY and no stalls in 10-30 s. FIP's HLS has no titles in the stream: its ID3 tags
+  are empty.
 - MP3, Ogg Vorbis and Opus play. Titles arrive from ICY and from Ogg comments. The Opus
   station tried sends no title, so Opus titles are unchecked.
 - An HTTP 404 gives `FileOpen`. A web page and a real unsupported format both give
@@ -231,7 +240,7 @@ Each check names the station to pick in the app, what to do, and what passes.
 
 | Platform | Problem | Status |
 |---|---|---|
-| Windows | AAC opens only after 1 MiB has been downloaded (50-200 s); HLS AAC doesn't play at all | Open, on the current Windows 11. Way around: decode AAC/HLS with Windows' own media stack and feed the audio into BASS |
+| Windows | AAC opens only after 1 MiB has been downloaded (50-200 s); HLS AAC doesn't play at all | Open, on the current Windows 11. Way around, tried and working: the app downloads AAC/HLS itself, decodes it with Windows' own AAC decoder and feeds the audio into BASS (`windecode/`) |
 | Android | A .NET GC during connect drops 15-45% of attempts | Mitigated: the app retries at once. Proven fix: open streams on a Java thread (**Java connect**) |
 | Android | The read timeout doesn't catch a stall with a download callback set, or on a chunked stream | Worked around: the app's own stall watchdog |
 
