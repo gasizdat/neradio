@@ -47,6 +47,13 @@
 		<PackageReference Include="ManagedBass.Mix" Version="4.0.2" />
 	</ItemGroup>
 
+	<!-- BASS's own Java API, for opening streams on a Java thread. These have to be static items:
+	     added in FetchBass, they come too late for the Java build. BASS.java exists by then. -->
+	<ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<AndroidJavaSource Include="Platforms\Android\Opener.java" Bind="true" />
+		<AndroidJavaSource Include="obj\bass-android\bass24\java\com\un4seen\bass\BASS.java" Bind="true" />
+	</ItemGroup>
+
 	<!-- BASS is closed source and never committed: its archives are fetched from un4seen at build time. -->
 	<Target Name="FetchBass" BeforeTargets="BeforeBuild" Condition="'$(TargetPlatformIdentifier)' == 'android' Or '$(TargetPlatformIdentifier)' == 'windows'">
 		<PropertyGroup>

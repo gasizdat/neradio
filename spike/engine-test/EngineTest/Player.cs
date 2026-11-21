@@ -87,6 +87,8 @@ sealed class Player
     public string? Format { get; private set; }
     public int NetBuffer { get; set; } = 5000;
     public int PreBuffer { get; set; } = 75;
+    public bool JavaConnect { get; set; }
+    public bool GcInConnect { get; set; }
     public static string SpectrumRate { get; set; } = "-";
 
     public bool Recording
@@ -159,7 +161,9 @@ sealed class Player
         _lastTitle = null;
         _wait = -1;
         _recorder.StationChanged();
-        Log.Write("play", $"{station}: {url} (buffer {NetBuffer} ms, pre-buffer {PreBuffer}%)");
+        var java = JavaConnect ? ", Java connect" : "";
+        var gc = GcInConnect ? ", GC in connect" : "";
+        Log.Write("play", $"{station}: {url} (buffer {NetBuffer} ms, pre-buffer {PreBuffer}%{java}{gc})");
         Start("user played");
     });
 
@@ -245,10 +249,30 @@ sealed class Player
         Bass.NetPreBuffer = PreBuffer;
         var clock = Stopwatch.StartNew();
         var flags = BassFlags.Decode | BassFlags.Float | BassFlags.StreamDownloadBlocks | BassFlags.StreamStatus;
-        var handle = Bass.CreateStream(url, 0, flags, _downloaded, request);
-        var error = Bass.LastError;
+        // A GC every 50 ms, so that one lands in whichever part of the connect it breaks.
+        using var gc = GcInConnect ? new Timer(_ => GC.Collect(), null, 0, 50) : null;
+        var (handle, error) = JavaConnect ? OpenOnJavaThread(url, flags) : CreateStream(url, flags, request);
         var elapsed = clock.ElapsedMilliseconds;
         Post(() => Opened(request, handle, error, elapsed, switchAtOnce));
+    }
+
+    (int Handle, Errors Error) CreateStream(string url, BassFlags flags, int request)
+    {
+        var handle = Bass.CreateStream(url, 0, flags, _downloaded, request);
+        return (handle, Bass.LastError);
+    }
+
+    // A .NET GC doesn't suspend a plain Java thread, so the GC drops don't happen there. But BASS's
+    // Java API can't call the .NET download callback: no recording and no HTTP status, so every
+    // failure counts as a dropped attempt.
+    static (int Handle, Errors Error) OpenOnJavaThread(string url, BassFlags flags)
+    {
+#if ANDROID
+        var packed = Com.Neradio.Enginetest.Opener.Open(url, (int)flags);
+        return ((int)packed, (Errors)(int)(packed >> 32));
+#else
+        throw new PlatformNotSupportedException();
+#endif
     }
 
     void Opened(int request, int handle, Errors error, long elapsed, bool switchAtOnce)

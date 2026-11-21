@@ -32,6 +32,10 @@ sealed class MainPage : ContentPage
         stop.Clicked += (_, _) => Player.Instance.Stop("user");
         var record = new Switch { IsToggled = Player.Instance.Recording };
         record.Toggled += (_, e) => Player.Instance.Recording = e.Value;
+        var javaConnect = new Switch();
+        javaConnect.Toggled += (_, e) => Player.Instance.JavaConnect = e.Value;
+        var gcInConnect = new Switch();
+        gcInConnect.Toggled += (_, e) => Player.Instance.GcInConnect = e.Value;
         var share = new Button { Text = "Share log" };
         share.Clicked += async (_, _) => await ShareLog();
         var http = new Button { Text = "Test the app's own plain http" };
@@ -61,6 +65,9 @@ sealed class MainPage : ContentPage
                     _relayHost,
                     Row(new Label { Text = "Buffer, ms", VerticalOptions = LayoutOptions.Center }, _netBuffer, new Label { Text = "Pre-buffer, %", VerticalOptions = LayoutOptions.Center }, _preBuffer),
                     Row(play, stop, new Label { Text = "Record", VerticalOptions = LayoutOptions.Center }, record),
+#if ANDROID
+                    Row(new Label { Text = "Java connect", VerticalOptions = LayoutOptions.Center }, javaConnect, new Label { Text = "GC in connect", VerticalOptions = LayoutOptions.Center }, gcInConnect),
+#endif
                     _state,
                     _title,
                     _format,

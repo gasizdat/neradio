@@ -195,12 +195,15 @@ Each check names the station to pick in the app, what to do, and what passes.
   attribution notice: #7 has to decide on that.
 - **AAC and HLS AAC play on Android**, so the 1 MB AAC problem above is Windows-only.
 - **A .NET GC during `BASS_StreamCreateURL` makes BASS drop the attempt.** It hangs up before
-  any HTTP status, with `FileOpen` or `Timeout`, in 15-45% of attempts. A GC forced 250 ms into
-  each attempt made 20 of 20 fail; `curl` on the phone and the Windows app never fail this way.
-  `MONO_THREADS_SUSPEND=hybrid` doesn't help. Opening the stream on a plain Java thread, through
-  BASS's own Java API, does: with the same GC forced into every attempt, 20 of 20 connected.
-  The app retries a dropped attempt at once instead, up to 3 times, without moving on in the
-  waits.
+  any HTTP status, with `FileOpen` or `Timeout`, in 15-45% of attempts. `curl` on the phone and
+  the Windows app never fail this way. `MONO_THREADS_SUSPEND=hybrid` doesn't help.
+  With **GC in connect** on, the app forces a GC every 50 ms during each attempt: 20 of 20 failed,
+  10 over http and 10 over https. (A single GC 250 ms in made 20 of 20 fail earlier in the day,
+  but 0 of 20 later, so the GC has to land in a particular part of the connect.)
+  Opening the stream on a plain Java thread, through BASS's own Java API (**Java connect**),
+  avoids it: with the same GCs, 20 of 20 connected. A stream opened that way has no download
+  callback, so no recording and no HTTP status. Without that switch, the app retries a dropped
+  attempt at once, up to 3 times, without moving on in the waits.
 - **BASS's read timeout fires on Android only without a download callback and on a stream
   that isn't chunked.** Against a plain HTTP/1.0 server on the phone's own loopback it fires
   (with a 5 s or a 10 s timeout, from a .NET or a Java thread); with the app's download callback
@@ -229,7 +232,7 @@ Each check names the station to pick in the app, what to do, and what passes.
 | Platform | Problem | Status |
 |---|---|---|
 | Windows | AAC opens only after 1 MiB has been downloaded (50-200 s); HLS AAC doesn't play at all | Open, on the current Windows 11. Way around: decode AAC/HLS with Windows' own media stack and feed the audio into BASS |
-| Android | A .NET GC during connect drops 15-45% of attempts | Mitigated: the app retries at once. Proven fix: open streams on a Java thread |
+| Android | A .NET GC during connect drops 15-45% of attempts | Mitigated: the app retries at once. Proven fix: open streams on a Java thread (**Java connect**) |
 | Android | The read timeout doesn't catch a stall with a download callback set, or on a chunked stream | Worked around: the app's own stall watchdog |
 
 Also for #7, though not bugs of the same kind: BASS_SSL is built on OpenSSL 1.1.1w, which is out
