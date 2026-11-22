@@ -65,7 +65,7 @@ A statement marked *(open: Qn)* depends on a question in [Open and unclear quest
 
 3. The application must allow the user to select a background *(open: Q34)*.
 
-4. The application must include multiple tabs/screens *(open: Q8)*.
+4. The application must include multiple tabs/screens.
    - Screens: Browse/Search, Groups, Playlists, Recordings, Now Playing, Settings (equalizer, background, list sources).
    - Phone layout: bottom tabs and a mini-player. Desktop layout: a side bar and a permanent player bar. Both layouts are designed from the start.
 
@@ -114,7 +114,7 @@ The original open questions and where they stand:
 
 3. **Specification: OpenSpec**, set up in `openspec/`. This file stays the brief; the requirements are written as OpenSpec specs in `openspec/specs/`.
 
-4. **Design and HTML concept demo:** [doc/concept/](../concept/index.html), which opens in a browser (#10). It settles Q36, and Q8 is decided from it *(open: Q8)*.
+4. **Design and HTML concept demo:** [doc/concept/](../concept/index.html), which opens in a browser (#10). It settles Q36, and Q8 chose Blazor Hybrid from it.
 
 5. **Naming and repository: neradio**, at `github.com/gasizdat/neradio` *(open: Q37–Q39)*.
 
@@ -153,7 +153,7 @@ Where a question has a proposed default, it's given after it. An answered questi
 ## Audio engine and UI
 
 - **Q7. Resolved (#8):** BASS, through ManagedBass. See Audio engine in Decisions.
-- **Q8.** MAUI with XAML, or MAUI Blazor Hybrid? Blazor Hybrid lets the HTML concept demo become the real UI.
+- **Q8. Resolved (#10):** MAUI Blazor Hybrid, so the concept demo's HTML and CSS carry over into the app. [Measured](https://github.com/gasizdat/neradio/blob/drafts/ai/ui-stack-test/spike/ui-test/RESULTS.md) against XAML on the same screen, it starts, scrolls and resumes alike on the Galaxy A73 and on Windows, and uses about 80 MB more memory on the phone and 135 MB more on Windows, for the WebView. Audio playback stays native under either choice.
 
 ## Station lists and catalog
 
