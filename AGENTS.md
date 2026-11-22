@@ -18,6 +18,9 @@ OpenSpec.
 
 ## Writing code
 
+The code's shape and the rules across it are in [doc/dev/](doc/dev/00-overview.md): read the overview and
+the principles before adding a project, a service or a test.
+
 Before changing product source, follow the `neradio-surgical-change` skill
 ([.agents/skills/neradio-surgical-change/SKILL.md](.agents/skills/neradio-surgical-change/SKILL.md)).
 The conventions it depends on:
@@ -63,7 +66,7 @@ The app is MIT-licensed; these apply from the first design proposal, not just wh
   mechanical change across many call sites is the exception: one branch and PR for the whole sweep.
 - A PR body names each issue it fixes as `Fixes #N`; `Related: #N` is only for issues it leaves
   open.
-- A PR that completes a row of #22, the research stage's plan, says `Related: #22`.
+- A PR that completes a row of #28, the current build stage's plan, says `Related: #28`.
 - Never delete a `drafts/ai/*` branch, local or remote, even after it's merged — omit
   `--delete-branch` on `gh pr merge`. Likewise, don't clean up old `git stash` entries; they're kept
   deliberately as recovery points.

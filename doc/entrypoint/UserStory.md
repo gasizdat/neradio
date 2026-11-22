@@ -116,7 +116,7 @@ The original open questions and where they stand:
 
 4. **Design and HTML concept demo:** [doc/concept/](../concept/index.html), which opens in a browser (#10). It settles Q36, and Q8 chose Blazor Hybrid from it.
 
-5. **Naming and repository: neradio**, at `github.com/gasizdat/neradio` *(open: Q37–Q39)*.
+5. **Naming and repository: neradio**, at `github.com/gasizdat/neradio` *(open: Q39)*.
 
 **Audio engine: BASS**, through ManagedBass, chosen by the engine test (#8). Every audio feature above needs direct access to the stream's bytes and audio samples, so the engine decides more than the UI framework does.
 
@@ -218,7 +218,7 @@ Where a question has a proposed default, it's given after it. An answered questi
 
 ## Naming, release and builds
 
-- **Q37.** Neradio or NeRadio? The spelling appears in namespaces and the store listing.
-- **Q38.** Which Android application ID? It can't change after the first Google Play upload. *Default: `io.github.gasizdat.neradio`.*
+- **Q37. Resolved (#9):** Neradio, in namespaces, project names and the store listing. The repository stays `neradio`.
+- **Q38. Resolved (#9):** `io.github.gasizdat.neradio`, the default. It can't change after the first Google Play upload.
 - **Q39.** Is the name free on Google Play, in the Microsoft Store and as a domain (neradio.app or .com)? Check before the first store upload.
-- **Q40.** Should CI build the app for both Windows and Android from the first code change? *Default: yes.*
+- **Q40. Resolved (#9):** yes, the default: CI builds Windows and Android and runs the tests on every PR from the first code change.
