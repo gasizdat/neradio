@@ -1,0 +1,69 @@
+@inject IJSRuntime JS
+
+@* The concept demo's Browse screen in its phone layout, with the demo's own CSS. *@
+<div class="app" data-layout="phone">
+    <header class="topbar"><span class="spacer"></span><h1>Browse</h1></header>
+    <main class="main" id="main">
+        <div class="page">
+            <label class="search">@Icon(Search)<input type="search" placeholder="Search stations, genres, countries" autocomplete="off"></label>
+            <div class="chips chips--scroll" role="group" aria-label="Genre">
+                <button class="chip" aria-pressed="true">All</button>
+                @foreach (var genre in Stations.AllGenres)
+                {
+                    <button class="chip" aria-pressed="false">@genre</button>
+                }
+            </div>
+            <div class="list">
+                @foreach (var station in Stations.All)
+                {
+                    <div class="row">
+                        <span class="logo logo--initials" style="--size:44px;--h:@station.Hue" aria-hidden="true">@station.Initials</span>
+                        <a class="row-main"><span class="row-title"><span>@station.Name</span></span><span class="row-meta">@station.Meta</span></a>
+                        <span class="row-actions">
+                            <button class="icon-btn" aria-label="Add to Favorites">@Icon(Star)</button>
+                            <button class="play-btn" aria-label="Play">@Icon(Play)</button>
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    </main>
+    <section class="player">
+        <div class="player-inner">
+            <a class="now-mini">
+                <span class="logo logo--initials" style="--size:40px;--h:210" aria-hidden="true">HL</span>
+                <span class="now-mini-text"><span class="now-mini-name"><span class="lamp" data-status="playing"></span><span>Harbor Lights FM</span></span><span class="now-mini-title">Mira Kalns - Lantern Street</span></span>
+            </a>
+            <div class="player-controls"><button class="play-btn" aria-label="Stop">@Icon(Stop)</button></div>
+        </div>
+    </section>
+    <nav class="tabs">
+        <a class="tab" aria-current="page">@Icon(BrowseIcon)Browse</a>
+        <a class="tab">@Icon(GroupsIcon)Groups</a>
+        <a class="tab">@Icon(PlaylistIcon)Playlists</a>
+        <a class="tab">@Icon(RecordingsIcon)Recordings</a>
+        <a class="tab">@Icon(SettingsIcon)Settings</a>
+    </nav>
+</div>
+
+@code {
+    const string Search = "<circle cx=\"11\" cy=\"11\" r=\"6.5\"/><path d=\"M16 16l4.5 4.5\"/>";
+    const string Star = "<path d=\"M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9-4.3-4.1 5.9-.8z\"/>";
+    const string Play = "<path fill=\"currentColor\" stroke=\"none\" d=\"M8 5.5v13l11-6.5z\"/>";
+    const string Stop = "<rect fill=\"currentColor\" stroke=\"none\" x=\"6.5\" y=\"6.5\" width=\"11\" height=\"11\" rx=\"1.5\"/>";
+    const string BrowseIcon = "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M15.5 8.5l-2 5-5 2 2-5z\"/>";
+    const string GroupsIcon = "<rect x=\"4\" y=\"4\" width=\"7\" height=\"7\" rx=\"1.5\"/><rect x=\"13\" y=\"4\" width=\"7\" height=\"7\" rx=\"1.5\"/><rect x=\"4\" y=\"13\" width=\"7\" height=\"7\" rx=\"1.5\"/><rect x=\"13\" y=\"13\" width=\"7\" height=\"7\" rx=\"1.5\"/>";
+    const string PlaylistIcon = "<path d=\"M4 6h12M4 11h12M4 16h7\"/><path fill=\"currentColor\" stroke=\"none\" d=\"M15 14v6l5-3z\"/>";
+    const string RecordingsIcon = "<path d=\"M4 12h1.5M7.5 8v8M11 5v14M14.5 9v6M18 7v10M21 11v2\"/>";
+    const string SettingsIcon = "<path d=\"M4 7h9M17 7h3M4 17h3M11 17h9\"/><circle cx=\"15\" cy=\"7\" r=\"2\"/><circle cx=\"9\" cy=\"17\" r=\"2\"/>";
+
+    static MarkupString Icon(string paths) => new($"<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\">{paths}</svg>");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        await JS.InvokeVoidAsync("afterPaint");
+        Marks.Write("content");
+    }
+}

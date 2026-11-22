@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="UiXaml.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:UiXaml"
+    Shell.TabBarBackgroundColor="#FAFBFD"
+    Shell.TabBarForegroundColor="#9C5200"
+    Shell.TabBarTitleColor="#9C5200"
+    Shell.TabBarUnselectedColor="#586572"
+    Shell.BackgroundColor="#FAFBFD"
+    Shell.TitleColor="#15202B"
+    Title="UiXaml">
+
+    <TabBar>
+        <ShellContent Title="Browse" ContentTemplate="{DataTemplate local:MainPage}" Route="browse" />
+        <ShellContent Title="Groups" ContentTemplate="{DataTemplate local:EmptyPage}" Route="groups" />
+        <ShellContent Title="Playlists" ContentTemplate="{DataTemplate local:EmptyPage}" Route="playlists" />
+        <ShellContent Title="Recordings" ContentTemplate="{DataTemplate local:EmptyPage}" Route="recordings" />
+        <ShellContent Title="Settings" ContentTemplate="{DataTemplate local:EmptyPage}" Route="settings" />
+    </TabBar>
+
+</Shell>

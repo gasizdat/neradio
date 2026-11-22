@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:test="clr-namespace:UiTest"
+             x:Class="UiXaml.MainPage"
+             Title="Browse"
+             BackgroundColor="#E9EDF1">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <Border Grid.Row="0" Margin="16,16,16,12" Padding="16,0" HeightRequest="48"
+                BackgroundColor="White" Stroke="#D6DDE4" StrokeShape="RoundRectangle 24">
+            <Entry Placeholder="Search stations, genres, countries" VerticalOptions="Center" />
+        </Border>
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,0,0,8">
+            <HorizontalStackLayout x:Name="Chips" Spacing="8" Padding="16,0">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Border Padding="12,6" BackgroundColor="White" Stroke="#D6DDE4" StrokeShape="RoundRectangle 17">
+                            <Label Text="{Binding .}" FontSize="14" TextColor="#15202B" />
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <CollectionView x:Name="List" Grid.Row="2">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="test:Station">
+                    <Grid ColumnDefinitions="44,*,Auto,Auto" ColumnSpacing="12" Padding="16,10" Loaded="OnRowLoaded">
+                        <Border WidthRequest="44" HeightRequest="44" StrokeThickness="0" BackgroundColor="{Binding Tile}" StrokeShape="RoundRectangle 10">
+                            <Label Text="{Binding Initials}" FontAttributes="Bold" FontSize="16" TextColor="#1A2632"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="15" TextColor="#15202B" LineBreakMode="TailTruncation" />
+                            <Label Text="{Binding Meta}" FontSize="13" TextColor="#586572" LineBreakMode="TailTruncation" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2" Text="☆" FontSize="22" TextColor="#586572" VerticalOptions="Center" />
+                        <Button Grid.Column="3" Text="▶" WidthRequest="44" HeightRequest="44" CornerRadius="22" Padding="0"
+                                BackgroundColor="#9C5200" TextColor="White" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Grid Grid.Row="3" ColumnDefinitions="40,*,Auto" ColumnSpacing="12" Padding="16,10" BackgroundColor="#FAFBFD">
+            <Border WidthRequest="40" HeightRequest="40" StrokeThickness="0" BackgroundColor="#D3E3F0" StrokeShape="RoundRectangle 9">
+                <Label Text="HL" FontAttributes="Bold" FontSize="14" TextColor="#1A2632" HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                <Label Text="Harbor Lights FM" FontAttributes="Bold" FontSize="15" TextColor="#15202B" LineBreakMode="TailTruncation" />
+                <Label Text="Mira Kalns - Lantern Street" FontSize="13" TextColor="#586572" LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+            <Button Grid.Column="2" Text="■" WidthRequest="44" HeightRequest="44" CornerRadius="22" Padding="0"
+                    BackgroundColor="#9C5200" TextColor="White" />
+        </Grid>
+
+    </Grid>
+
+</ContentPage>
