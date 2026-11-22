@@ -65,7 +65,7 @@ A statement marked *(open: Qn)* depends on a question in [Open and unclear quest
 
 3. The application must allow the user to select a background *(open: Q34)*.
 
-4. The application must include multiple tabs/screens *(open: Q8, Q36)*.
+4. The application must include multiple tabs/screens *(open: Q8)*.
    - Screens: Browse/Search, Groups, Playlists, Recordings, Now Playing, Settings (equalizer, background, list sources).
    - Phone layout: bottom tabs and a mini-player. Desktop layout: a side bar and a permanent player bar. Both layouts are designed from the start.
 
@@ -114,7 +114,7 @@ The original open questions and where they stand:
 
 3. **Specification: OpenSpec**, set up in `openspec/`. This file stays the brief; the requirements are written as OpenSpec specs in `openspec/specs/`.
 
-4. **Design and HTML concept demo: open** *(open: Q8, Q36)*.
+4. **Design and HTML concept demo:** [doc/concept/](../concept/index.html), which opens in a browser (#10). It settles Q36, and Q8 is decided from it *(open: Q8)*.
 
 5. **Naming and repository: neradio**, at `github.com/gasizdat/neradio` *(open: Q37–Q39)*.
 
@@ -205,11 +205,16 @@ Where a question has a proposed default, it's given after it. An answered questi
 
 ## Design
 
-- **Q36.** The HTML concept demo isn't built yet. It should settle:
-  - how the station view shows the groups that contain the station (3.3), with quick add and remove;
-  - how renamed stations are shown, and how they're reset;
-  - the fallback for missing or tiny station logos;
-  - how stations and recorded tracks are mixed in the playlist editor.
+- **Q36. Resolved (#10):** as the HTML concept demo shows:
+  - **Groups on the station page (3.3):** the page lists the groups that contain the station, each with a button that removes the station from it. "Add to group" opens every group with a checkbox, and a field to create a new group. A star on the station's row in Browse, on its page and in Now playing adds it to Favorites or removes it.
+  - **Renamed stations:** lists show only the user's name. The station page marks the station "Renamed", shows the name from the station list, and offers "Reset name". A logo the user chose is marked the same way, with "Reset logo".
+  - **Logo fallback:** a tile with the station's initials replaces a missing logo, one that fails to load, and one smaller than 48 px on either side. Its color comes from the station's ID, so it looks the same everywhere and after a restart.
+  - **Playlist editor:** stations and recorded tracks share one ordered list. Each row shows what the item is and how the playlist moves on from it:
+    - a station at its next title, or after the time limit;
+    - a station that sends no titles after the time limit only;
+    - a recording at its end.
+
+    "Add" offers stations and recordings on two tabs.
 
 ## Naming, release and builds
 
