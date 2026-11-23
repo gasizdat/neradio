@@ -76,7 +76,8 @@ The app is MIT-licensed; these apply from the first design proposal, not just wh
 ## Verification
 
 - Run the project's canonical CI entry point, not an ad-hoc subset: affected test classes first,
-  then the full suite.
+  then the full suite. It's `dotnet build Neradio.slnx`, then `dotnet test Neradio.slnx`, on
+  Windows, which builds both apps; `dotnet workload restore Neradio.slnx` installs what they need.
 - Pin each new behavior and each prevented regression with a test — including assertions that
   something must *not* happen.
 - Report results faithfully. If tests fail, show the output; if a step was skipped, say so.

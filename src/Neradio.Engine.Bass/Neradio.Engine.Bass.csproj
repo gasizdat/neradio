@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">29.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <!-- BASS is closed source and never committed: its archives are fetched from un4seen at build
+       time. The app makes every connection, so neither BASS_SSL nor BASSHLS is needed. -->
+  <Target Name="FetchBass" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <BassSuffix Condition="'$(TargetPlatformIdentifier)' == 'android'">-android</BassSuffix>
+      <BassDir>$(BaseIntermediateOutputPath)bass$(BassSuffix)\</BassDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <BassArchive Include="bass24;bassmix24;bassopus24" />
+    </ItemGroup>
+    <DownloadFile SourceUrl="https://www.un4seen.com/files/%(BassArchive.Identity)$(BassSuffix).zip" DestinationFolder="$(BassDir)zip" Condition="!Exists('$(BassDir)zip\%(BassArchive.Identity)$(BassSuffix).zip')" />
+    <Unzip SourceFiles="$(BassDir)zip\%(BassArchive.Identity)$(BassSuffix).zip" DestinationFolder="$(BassDir)%(BassArchive.Identity)" Condition="!Exists('$(BassDir)%(BassArchive.Identity)')" />
+    <!-- BASS ships Android libraries for more ABIs; the app builds for these two. -->
+    <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'android'">
+      <EmbeddedNativeLibrary Include="$(BassDir)*\libs\arm64-v8a\*.so" Abi="arm64-v8a" />
+      <EmbeddedNativeLibrary Include="$(BassDir)*\libs\x86_64\*.so" Abi="x86_64" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+      <_BassDll Include="$(BassDir)*\x64\*.dll" />
+      <ContentWithTargetPath Include="@(_BassDll)" TargetPath="%(_BassDll.Filename)%(_BassDll.Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>
