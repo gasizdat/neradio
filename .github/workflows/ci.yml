@@ -26,5 +26,7 @@ jobs:
       - name: Build
         run: dotnet build Neradio.slnx
 
+      # A filter rather than the solution: given the app, newer MAUI workloads make dotnet test
+      # ask which device to run it on.
       - name: Test
-        run: dotnet test Neradio.slnx --no-build
+        run: dotnet test --solution Neradio.Tests.slnf --no-build

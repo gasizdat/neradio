@@ -1,0 +1,9 @@
+{
+  "solution": {
+    "path": "Neradio.slnx",
+    "projects": [
+      "tests\\Neradio.Core.Tests\\Neradio.Core.Tests.csproj",
+      "tests\\Neradio.UI.Tests\\Neradio.UI.Tests.csproj"
+    ]
+  }
+}
