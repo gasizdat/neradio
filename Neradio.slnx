@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Neradio.App/Neradio.App.csproj" />
+    <Project Path="src/Neradio.Core/Neradio.Core.csproj" />
+    <Project Path="src/Neradio.Engine.Bass/Neradio.Engine.Bass.csproj" />
+    <Project Path="src/Neradio.UI/Neradio.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Neradio.Core.Tests/Neradio.Core.Tests.csproj" />
+    <Project Path="tests/Neradio.UI.Tests/Neradio.UI.Tests.csproj" />
+  </Folder>
+</Solution>
