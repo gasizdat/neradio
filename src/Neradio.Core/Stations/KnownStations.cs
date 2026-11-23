@@ -8,17 +8,17 @@ public sealed class KnownStations
 
     public IEnumerable<Station> Stations => _stations;
 
-    // Returns the known station the entry is, or the entry itself when it's a new station.
-    public Station Add(Station entry)
+    // Returns the known station it matches, or the station itself, now known, when it matches none.
+    public Station Add(Station station)
     {
-        var match = Find(entry);
+        var match = Find(station);
         if (match is null)
         {
-            Index(entry);
-            return entry;
+            Index(station);
+            return station;
         }
 
-        if (match.Id is null && entry.Id is { } id)
+        if (match.Id is null && station.Id is { } id)
         {
             match.Id = id;
             _byId.Add(id, match);
@@ -26,23 +26,23 @@ public sealed class KnownStations
         return match;
     }
 
-    private Station? Find(Station entry)
+    private Station? Find(Station station)
     {
-        if (entry.Id is { } id && _byId.TryGetValue(id, out var byId))
+        if (station.Id is { } id && _byId.TryGetValue(id, out var byId))
             return byId;
 
-        // A station with an ID other than the entry's isn't a candidate: when both have IDs, the IDs decide.
-        var candidates = StreamKeys(entry)
+        // A known station with an ID other than this one's isn't a candidate: when both have IDs, the IDs decide.
+        var candidates = StreamKeys(station)
             .SelectMany(key => _byStream.GetValueOrDefault(key, []))
             .Distinct()
-            .Where(station => entry.Id is null || station.Id is null)
+            .Where(candidate => station.Id is null || candidate.Id is null)
             .ToArray();
         if (candidates.Length <= 1)
             return candidates.FirstOrDefault();
 
-        var primary = StreamUrl.Normalize(entry.PrimaryStream);
+        var primary = StreamUrl.Normalize(station.PrimaryStream);
         var samePrimary = candidates
-            .Where(station => StreamUrl.Normalize(station.PrimaryStream) == primary)
+            .Where(candidate => StreamUrl.Normalize(candidate.PrimaryStream) == primary)
             .ToArray();
         return samePrimary.Length == 1 ? samePrimary[0] : null;
     }
