@@ -30,6 +30,8 @@ The conventions it depends on:
 - **No nested call expressions on one line.** Bind the intermediate to a named local instead.
 - **LINQ / lazy sequences and raw arrays over `List<T>`** for arguments and return values that the
   callee does not mutate.
+- **Pattern matching over `if`–`else if` chains** that test the same value: a `switch` statement
+  or expression with case patterns.
 - **Guard only states that can actually occur.** No defensive null-checks or try/catch "just in
   case".
 - **Comments only for non-obvious invariants.** Never narrate what the code does. If a signature

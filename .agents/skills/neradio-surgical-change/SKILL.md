@@ -32,7 +32,7 @@ Each of these beats its heavier alternative unless proven insufficient:
 ## Blend in
 
 - Match the file's existing member grouping and ordering (e.g. fields → ctor → public members → private methods); never interleave access levels.
-- Follow the coding conventions in `AGENTS.md`: minimalist code, no nested call expressions on one line, LINQ/lazy + raw arrays over List for unchanged args/returns, commit-prefix convention (*)/(+)/(~)/(-)/(=).
+- Follow the coding conventions in `AGENTS.md`: minimalist code, no nested call expressions on one line, LINQ/lazy + raw arrays over List for unchanged args/returns, a `switch` with patterns over an if-else chain on one value, commit-prefix convention (*)/(+)/(~)/(-)/(=).
 - Comments only for non-obvious invariants, never narrating what the code does or why the change is correct.
 - Before writing a doc comment, check whether the signature already says it: `static` already says "no instance state needed"; a descriptive method/param name already says what it does. If the comment would just restate that in prose, skip it. A strong tell: if you're about to write near-identical doc comments on two or three sibling methods (e.g. the same "stateless, so callers don't need an instance" paragraph on `Formatter1.Format`, `Formatter2.Format`, `Formatter3.Format`), that's boilerplate, not a real per-method invariant — cut it everywhere, or say it once where it's actually non-obvious.
 
