@@ -877,6 +877,21 @@ public sealed class PlayerTests
         Assert.Equal(["Artist A - Song 1"], _titleChanges);
     }
 
+    [Fact]
+    public void OggTitleBeforeItsAudioPlays()
+    {
+        _http.Stream(Primary, "audio/ogg");
+        _player.Play(Station(Primary));
+        _http.LastBody(Primary).Send([1]);
+
+        _engine.Streams[0].ChangeTitle("Artist A - Song 1");
+        Assert.Null(_player.Title);
+        _engine.Streams[0].Play();
+
+        Assert.Equal("Artist A - Song 1", _player.Title);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

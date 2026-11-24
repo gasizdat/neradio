@@ -336,7 +336,8 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
             // The engine plays a new stream only once the one before it has run out, so all of
             // that one's audio has been decoded.
             var rest = _audible?.ReachedTitles(long.MaxValue) ?? [];
-            changes = Show(rest);
+            string[] waiting = connection.WaitingTitle is { } title ? [title] : [];
+            changes = Show([.. rest, .. waiting]);
             _audible?.Audio?.Dispose();
             _audible = connection;
             State = PlayerState.Playing;
@@ -384,7 +385,10 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         lock (_gate)
         {
             if (connection != _audible)
+            {
+                connection.WaitingTitle = title;
                 return;
+            }
             changes = Show([title]);
         }
         RaiseTitleChanged(changes);

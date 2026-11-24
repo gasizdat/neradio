@@ -33,6 +33,8 @@ internal sealed class Connection : IDisposable
     public bool IsUnsupported => _isUnsupported;
     // A timestamp of the time provider.
     public long? PlayingSince { get; set; }
+    // The engine can decode an Ogg title before the audio that carries it plays.
+    public string? WaitingTitle { get; set; }
 
     public event Action? Playing;
     // An Ogg title, which the engine raises when decoding reaches it.
