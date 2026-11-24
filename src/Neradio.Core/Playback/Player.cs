@@ -247,7 +247,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         if (Playlists.IsHls(text))
         {
             var hls = session.Hls(url, time);
-            return await AttemptAsync(session, url, connection => hls.ReadAsync(http, url, text, connection), token).ConfigureAwait(false);
+            return await AttemptAsync(session, url, connection => hls.ReadAsync(http, url, text, connection), hls.Rewind, token).ConfigureAwait(false);
         }
 
         var streams = Playlists.Entries(url, text);
@@ -281,10 +281,11 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     {
         if (session.Skipped.Contains(url) || !tried.Add(url))
             return Task.FromResult<TimeSpan?>(null);
-        return AttemptAsync(session, url, connection => IcyStream.ReadAsync(http, url, connection), token);
+        return AttemptAsync(session, url, connection => IcyStream.ReadAsync(http, url, connection), null, token);
     }
 
-    private async Task<TimeSpan?> AttemptAsync(Session session, Uri url, Func<Connection, Task> read, CancellationToken token)
+    // The rewind is for audio dropped before it played: what it downloaded is downloaded again.
+    private async Task<TimeSpan?> AttemptAsync(Session session, Uri url, Func<Connection, Task> read, Action? rewind, CancellationToken token)
     {
         using var connection = new Connection(engine, time, token);
         connection.Playing += () => OnPlaying(session, url, connection);
@@ -308,7 +309,10 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
                 session.Attempt = null;
             // Lost while it played, its audio plays on from the buffer until another connection's plays.
             if (connection != _audible)
+            {
                 connection.Audio?.Dispose();
+                rewind?.Invoke();
+            }
             ThrowIfEnded(session, token);
             if (connection.IsUnsupported)
                 session.Skipped.Add(url);

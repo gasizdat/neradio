@@ -11,10 +11,13 @@ internal sealed class HlsStream(TimeProvider time)
     private static readonly TimeSpan Window = TimeSpan.FromSeconds(60);
 
     private long? _next;
+    // Where the latest connection started.
+    private long? _start;
 
     // Returns when the playlist ends or stops being one. The text is the playlist at the URL.
     public async Task ReadAsync(HttpClient http, Uri url, string text, Connection connection)
     {
+        _start = _next;
         var token = connection.Token;
         var loadedAt = time.GetTimestamp();
         if (HlsPlaylist.Variant(url, text) is { } variant)
@@ -65,6 +68,9 @@ internal sealed class HlsStream(TimeProvider time)
             text = await Playlists.DownloadAsync(http, url, token).ConfigureAwait(false) ?? "";
         }
     }
+
+    // The latest connection's audio was dropped unheard: the next one goes on from where it started.
+    public void Rewind() => _next = _start;
 
     // When the next segment is older than the playlist, after a long outage, or so far past it that
     // the encoder must have started its numbering over. A playlist a server serves late is behind

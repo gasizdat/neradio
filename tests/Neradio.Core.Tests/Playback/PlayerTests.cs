@@ -497,6 +497,20 @@ public sealed class PlayerTests
     }
 
     [Fact]
+    public void HlsConnectionDroppedBeforeItPlays()
+    {
+        _http.Text(Hls, "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:100\n#EXTINF:10,\n100.ts\n");
+        _http.Bytes(new Uri("https://lists.example/100.ts"), MpegTsWriter.Segment([100]));
+        _player.Play(Station(Hls));
+
+        _player.NetworkChanged();
+
+        Assert.True(_engine.Streams[0].IsStopped);
+        Assert.Equal(2, _engine.Streams.Count);
+        Assert.Equal([100], _engine.Streams[1].Written);
+    }
+
+    [Fact]
     public void PlaylistCannotBeDownloaded()
     {
         _player.Play(Station(Pls));
