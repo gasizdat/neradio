@@ -7,6 +7,7 @@ public interface IAudioStream : IDisposable
     // How far decoding has got, counted in the bytes written.
     long Decoded { get; }
 
+    // Raised once, when the stream's audio starts to play.
     event Action? Playing;
     event Action? Unsupported;
     // An Ogg stream's title, raised when decoding reaches the track that carries it.

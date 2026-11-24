@@ -23,6 +23,7 @@ internal sealed class Connection : IDisposable
     public CancellationToken Token => _cancel.Token;
     public IAudioStream? Audio { get; private set; }
     public bool IsUnsupported => _isUnsupported;
+    public DateTimeOffset? PlayingSince { get; set; }
 
     public event Action? Playing;
 
