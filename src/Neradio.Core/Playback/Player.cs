@@ -50,8 +50,29 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         run?.Cancel();
     }
 
+    // The old connection would hang until it timed out, so it's dropped even while audio still
+    // arrives on it. Its buffered audio plays on.
+    public void NetworkChanged()
+    {
+        Session? session;
+        CancellationTokenSource old;
+        lock (_gate)
+        {
+            session = _session;
+            if (session is null)
+                return;
+            if (session.Attempt != _audible)
+                session.Attempt?.Audio?.Dispose();
+            old = session.Restart();
+            if (State == PlayerState.Playing)
+                State = PlayerState.Reconnecting;
+        }
+        old.Cancel();
+        _ = RunAsync(session);
+    }
+
     // Stops the audio. The run it returns is cancelled once out of the lock: its awaits end on
-    // this thread, and take the lock again.
+    // the cancelling thread, and take the lock again.
     private CancellationTokenSource? End()
     {
         var session = _session;
@@ -60,6 +81,13 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         _audible?.Audio?.Dispose();
         _audible = null;
         return session?.Run;
+    }
+
+    // A stop or a network change has ended the run, though its token may not be cancelled yet.
+    private void ThrowIfEnded(Session session, CancellationToken token)
+    {
+        if (_session != session || session.Run.Token != token)
+            throw new OperationCanceledException(token);
     }
 
     private async Task RunAsync(Session session)
@@ -77,7 +105,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
                 var played = await RoundAsync(session, token).ConfigureAwait(false);
                 lock (_gate)
                 {
-                    token.ThrowIfCancellationRequested();
+                    ThrowIfEnded(session, token);
                     if (session.Streams.All(session.Skipped.Contains))
                     {
                         End();
@@ -89,7 +117,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
                 }
             }
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
         }
     }
@@ -115,7 +143,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         connection.Playing += () => OnPlaying(session, connection);
         lock (_gate)
         {
-            token.ThrowIfCancellationRequested();
+            ThrowIfEnded(session, token);
             session.Attempt = connection;
         }
         try
@@ -128,11 +156,12 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
 
         lock (_gate)
         {
-            session.Attempt = null;
+            if (session.Attempt == connection)
+                session.Attempt = null;
             // Lost while it played, its audio plays on from the buffer until another connection's plays.
             if (connection != _audible)
                 connection.Audio?.Dispose();
-            token.ThrowIfCancellationRequested();
+            ThrowIfEnded(session, token);
             if (connection.IsUnsupported)
                 session.Skipped.Add(url);
             if (connection.PlayingSince is not { } since)
@@ -159,7 +188,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     // One station's playback, from Play until it stops.
     private sealed class Session(Station station)
     {
-        public CancellationTokenSource Run { get; } = new();
+        public CancellationTokenSource Run { get; private set; } = new();
         public Uri[] Streams { get; } = [station.PrimaryStream, .. station.AlternateStreams];
         public HashSet<Uri> Skipped { get; } = [];
         public Uri? LastPlayed { get; set; }
@@ -170,5 +199,14 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         // The stream that played last first, then the others in the station's order.
         public IEnumerable<Uri> RoundOrder() =>
             LastPlayed is null ? Streams : Streams.Where(url => url != LastPlayed).Prepend(LastPlayed);
+
+        // Starts the waits over, in a new run. Returns the old run, to cancel.
+        public CancellationTokenSource Restart()
+        {
+            var old = Run;
+            Run = new CancellationTokenSource();
+            Rounds = 0;
+            return old;
+        }
     }
 }

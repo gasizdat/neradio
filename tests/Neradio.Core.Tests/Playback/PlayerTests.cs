@@ -204,6 +204,85 @@ public sealed class PlayerTests
         Assert.Same(station, _player.Station);
     }
 
+    // Network changes
+
+    [Fact]
+    public void PlayingConnectionIsDropped()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        Advance(5);
+        var old = _http.LastBody(Primary);
+
+        _player.NetworkChanged();
+        old.Send([9]);
+
+        Assert.Equal([0, 5], RequestTimes());
+        Assert.DoesNotContain((byte)9, _engine.Streams[0].Written);
+        Assert.False(_engine.Streams[0].IsStopped);
+        Assert.Equal(PlayerState.Reconnecting, _player.State);
+    }
+
+    [Fact]
+    public void RoundUnderWayIsAbandoned()
+    {
+        _http.Hang(Primary);
+        _player.Play(Station(Primary, Alternate));
+        Advance(5);
+
+        _player.NetworkChanged();
+        Advance(5);
+        Assert.Equal([Primary, Primary], _http.Requested);
+        Advance(5);
+
+        Assert.Equal([Primary, Primary, Alternate], _http.Requested);
+        Assert.Equal([0, 5, 15], RequestTimes());
+    }
+
+    [Fact]
+    public void WaitInProgressIsSkipped()
+    {
+        _player.Play(Station(Primary));
+        Advance(1);
+        Advance(0.5);
+
+        _player.NetworkChanged();
+
+        Assert.Equal([0, 1, 1.5], RequestTimes());
+    }
+
+    [Fact]
+    public void FirstRoundOnTheNewNetworkFails()
+    {
+        _player.Play(Station(Primary));
+        foreach (var wait in new[] { 1, 2, 4, 8, 16, 30 })
+            Advance(wait);
+        Advance(10);
+
+        _player.NetworkChanged();
+        Advance(0.9);
+        Assert.Equal(8, _http.Requests.Count);
+        Advance(0.1);
+
+        double[] rounds = [0, 1, 3, 7, 15, 31, 61, 71, 72];
+        Assert.Equal(rounds, RequestTimes());
+    }
+
+    [Fact]
+    public void NetworkChangeAfterAStop()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.Stop();
+
+        _player.NetworkChanged();
+
+        Assert.Single(_http.Requests);
+        Assert.Equal(PlayerState.Stopped, _player.State);
+    }
+
     // Buffered audio while reconnecting
 
     [Fact]
