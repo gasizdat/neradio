@@ -14,9 +14,12 @@ internal sealed class Connection : IDisposable
     private readonly CancellationTokenSource _cancel;
     // ICY titles, each with how many bytes of audio came before it.
     private readonly Queue<(long At, string Title)> _titles = new();
+    // Its audio can outlive it, and the engine can still reject that audio's format.
+    private readonly Lock _gate = new();
     private TimeSpan _limit = Limit;
     private long _written;
     private volatile bool _isUnsupported;
+    private bool _isDisposed;
 
     public Connection(IAudioEngine engine, TimeProvider time, CancellationToken cancellation)
     {
@@ -80,13 +83,22 @@ internal sealed class Connection : IDisposable
 
     public void Reject()
     {
-        _isUnsupported = true;
-        _cancel.Cancel();
+        lock (_gate)
+        {
+            if (_isDisposed)
+                return;
+            _isUnsupported = true;
+            _cancel.Cancel();
+        }
     }
 
     public void Dispose()
     {
-        _cancel.Dispose();
-        _stall.Dispose();
+        lock (_gate)
+        {
+            _isDisposed = true;
+            _cancel.Dispose();
+            _stall.Dispose();
+        }
     }
 }

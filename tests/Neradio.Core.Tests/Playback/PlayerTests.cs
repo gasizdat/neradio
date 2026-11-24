@@ -603,6 +603,21 @@ public sealed class PlayerTests
     }
 
     [Fact]
+    public void FormatRejectedAfterTheConnectionIsLost()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _http.LastBody(Primary).End();
+
+        var error = Record.Exception(_engine.Streams[0].RejectFormat);
+        Advance(1);
+
+        Assert.Null(error);
+        Assert.Equal([0, 1], RequestTimes());
+    }
+
+    [Fact]
     public void NoPlayableStream()
     {
         _http.Stream(Primary, "audio/flac");
