@@ -11,10 +11,11 @@ internal sealed class FileSource : MixerSource
     // BASS holds these as raw function pointers, so they must live as long as the channel.
     private readonly FileProcedures _procedures;
     private readonly SyncProcedure _oggChanged;
-    // What's written before the channel exists. BASS reads the start of it to find the format.
+    // What's written before the channel exists, and what didn't fit in its buffer then. BASS
+    // reads the start of it to find the format.
     private readonly Queue<byte[]> _pending = new();
     private readonly SemaphoreSlim _arrived = new(0);
-    // How much of the first pending array BASS has read.
+    // How much of the first pending array BASS has taken.
     private int _readFromNext;
     private bool _isCreating;
 
@@ -72,8 +73,12 @@ internal sealed class FileSource : MixerSource
                     StartCreating();
                     return;
                 }
-                var put = Put(data.Span);
-                data = data[put..];
+                PutPending();
+                if (_pending.Count == 0)
+                {
+                    var put = Put(data.Span);
+                    data = data[put..];
+                }
             }
             CheckReady();
             if (data.IsEmpty)
@@ -112,11 +117,9 @@ internal sealed class FileSource : MixerSource
             }
             Attach(channel);
             ManagedBass.Bass.ChannelSetSync(channel, SyncFlags.OggChange | SyncFlags.Mixtime, 0, _oggChanged);
-            // A burst is at most 35 seconds of audio (#8), so the rest fits in the buffer.
-            if (_pending.TryDequeue(out var first))
-                Put(first.AsSpan(_readFromNext));
-            while (_pending.TryDequeue(out var rest))
-                Put(rest);
+            // HLS starts with up to 60 seconds of audio, which may not all fit. The next write
+            // puts the rest first.
+            PutPending();
             title = OggTitle(channel);
         }
         // An Ogg change sync fires only for the streams after the first.
@@ -149,6 +152,20 @@ internal sealed class FileSource : MixerSource
                 }
             }
             _arrived.Wait();
+        }
+    }
+
+    // Under the gate, once the channel exists.
+    private void PutPending()
+    {
+        while (_pending.TryPeek(out var next))
+        {
+            var rest = next.AsSpan(_readFromNext);
+            _readFromNext += Put(rest);
+            if (_readFromNext < next.Length)
+                return;
+            _pending.Dequeue();
+            _readFromNext = 0;
         }
     }
 
