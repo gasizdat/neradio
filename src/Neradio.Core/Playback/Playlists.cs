@@ -19,6 +19,9 @@ internal static partial class Playlists
     // A list of streams has no tags of HLS's own.
     public static bool IsHls(string text) => text.Contains("#EXT-X-", StringComparison.Ordinal);
 
+    // HttpClient throws on any other scheme.
+    public static bool IsHttp(Uri url) => url.Scheme == Uri.UriSchemeHttp || url.Scheme == Uri.UriSchemeHttps;
+
     // The http and https URLs a .pls or .m3u lists, in its order.
     public static Uri[] Entries(Uri url, string text)
     {
@@ -29,8 +32,8 @@ internal static partial class Playlists
         var entries = isPls ? PlsEntries(lines) : lines.Where(line => !line.StartsWith('#'));
         return entries
             .Select(entry => Uri.TryCreate(url, entry, out var stream) ? stream : null)
-            .Where(stream => stream?.Scheme == Uri.UriSchemeHttp || stream?.Scheme == Uri.UriSchemeHttps)
             .OfType<Uri>()
+            .Where(IsHttp)
             .ToArray();
     }
 

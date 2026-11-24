@@ -261,6 +261,86 @@ public sealed class HlsStreamTests
         Assert.True(reading.IsCanceled);
     }
 
+    // Malformed playlists
+
+    [Fact]
+    public void BandwidthTooLargeForANumber()
+    {
+        var master = """
+            #EXTM3U
+            #EXT-X-STREAM-INF:BANDWIDTH=99999999999999999999
+            high.m3u8
+            """;
+        Serve(100, 100);
+
+        var reading = Read(Master, master);
+
+        Assert.False(reading.IsFaulted);
+        Assert.Equal("[100]", Played());
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-100")]
+    [InlineData("99999999")]
+    public void TargetDurationThatIsNotOne(string target)
+    {
+        var playlist = $"""
+            #EXTM3U
+            #EXT-X-TARGETDURATION:{target}
+            #EXTINF:10,
+            high/100.ts
+            """;
+        Serve(100, 100);
+
+        var reading = Read(Media, playlist);
+
+        Assert.True(reading.IsCompletedSuccessfully);
+        Assert.Empty(_engine.Streams);
+    }
+
+    [Theory]
+    [InlineData("NaN")]
+    [InlineData("-10")]
+    [InlineData("1e300")]
+    public void SegmentDurationThatIsNotOne(string duration)
+    {
+        var playlist = $"""
+            #EXTM3U
+            #EXT-X-TARGETDURATION:10
+            #EXT-X-MEDIA-SEQUENCE:100
+            #EXTINF:{duration},
+            high/100.ts
+            """;
+        Serve(100, 100);
+
+        var reading = Read(Media, playlist);
+        _time.Advance(TimeSpan.FromSeconds(4.9));
+
+        Assert.False(reading.IsFaulted);
+        Assert.Equal("[100]", Played());
+        Assert.Equal(1, MediaRequests());
+    }
+
+    [Fact]
+    public void SegmentThatIsNotOnTheWeb()
+    {
+        var playlist = """
+            #EXTM3U
+            #EXT-X-TARGETDURATION:10
+            #EXT-X-MEDIA-SEQUENCE:99
+            #EXTINF:10,
+            ftp://hls.example/high/99.ts
+            #EXTINF:10,
+            high/100.ts
+            """;
+        Serve(100, 100);
+
+        var reading = Read(Media, playlist);
+
+        Assert.False(reading.IsFaulted);
+        Assert.Equal("[100]", Played());
+    }
 
     private Task Read(long first, long last)
     {

@@ -71,6 +71,9 @@ sealed class FakeHttp(TimeProvider time) : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var url = request.RequestUri!;
+        // As SocketsHttpHandler does.
+        if (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps)
+            throw new NotSupportedException($"The '{url.Scheme}' scheme is not supported.");
         var now = time.GetUtcNow();
         Requests.Add((url, now));
         LastRequest = request;
