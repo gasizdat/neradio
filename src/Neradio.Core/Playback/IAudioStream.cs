@@ -1,7 +1,7 @@
 namespace Neradio.Core.Playback;
 
-// One connection's audio in the engine. Disposing it stops its audio at once. The events can come
-// on any thread.
+// One connection's audio in the engine. Disposing it stops its audio at once; it raises no event
+// after that, and drops what's written. The events can come on any thread.
 public interface IAudioStream : IDisposable
 {
     // How far decoding has got, counted in the bytes written.
