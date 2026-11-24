@@ -479,6 +479,23 @@ public sealed class PlayerTests
     }
 
     [Fact]
+    public void HlsPlaylistListedInAPlaylist()
+    {
+        var listed = new Uri("https://lists.example/hls/live.m3u8");
+        var segment = new Uri("https://lists.example/hls/100.ts");
+        _http.Text(M3u, "#EXTM3U\nhttps://lists.example/hls/live.m3u8\n");
+        _http.Text(listed, "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:100\n#EXTINF:10,\n100.ts\n");
+        _http.Bytes(segment, MpegTsWriter.Segment([1, 2, 3]));
+
+        _player.Play(Station(M3u));
+        _engine.Streams[0].Play();
+
+        Assert.Equal([M3u, listed, segment], _http.Requested);
+        Assert.Equal("audio/aac", _engine.Streams[0].ContentType);
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
     public void HlsReconnectGoesOnAfterTheLastSegment()
     {
         _http.Text(Hls, "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:100\n#EXTINF:10,\n100.ts\n");

@@ -225,14 +225,16 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         var tried = new HashSet<Uri>();
         foreach (var url in session.RoundOrder())
         {
-            var played = Playlists.IsPlaylist(url)
-                ? await PlaylistAsync(session, url, tried, token).ConfigureAwait(false)
-                : await StreamAsync(session, url, tried, token).ConfigureAwait(false);
+            var played = await ConnectAsync(session, url, tried, token).ConfigureAwait(false);
             if (played is not null)
                 return played;
         }
         return null;
     }
+
+    // A station's stream URL, or one a playlist lists: either can be a playlist, HLS included.
+    private Task<TimeSpan?> ConnectAsync(Session session, Uri url, HashSet<Uri> tried, CancellationToken token) =>
+        Playlists.IsPlaylist(url) ? PlaylistAsync(session, url, tried, token) : StreamAsync(session, url, tried, token);
 
     // Downloaded each time a round reaches it. A playlist that can't be downloaded within the
     // limit, or lists no usable stream, is a stream that failed to connect.
@@ -253,7 +255,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         var streams = Playlists.Entries(url, text);
         foreach (var stream in streams)
         {
-            var played = await StreamAsync(session, stream, tried, token).ConfigureAwait(false);
+            var played = await ConnectAsync(session, stream, tried, token).ConfigureAwait(false);
             if (played is not null)
                 return played;
         }
