@@ -52,39 +52,36 @@ internal sealed partial record HlsPlaylist(TimeSpan TargetDuration, HlsSegment[]
             var colon = line.IndexOf(':');
             var tag = colon < 0 ? line : line[..colon];
             var value = colon < 0 ? "" : line[(colon + 1)..];
-            if (tag == "#EXT-X-TARGETDURATION")
+            switch (tag)
             {
-                var isValid = int.TryParse(value, CultureInfo.InvariantCulture, out var seconds) && seconds is > 0 and <= MaxSeconds;
-                target = isValid ? TimeSpan.FromSeconds(seconds) : null;
-            }
-            else if (tag == "#EXT-X-MEDIA-SEQUENCE")
-            {
-                sequence = long.TryParse(value, CultureInfo.InvariantCulture, out var first) ? first : 0;
-            }
-            else if (tag == "#EXTINF")
-            {
-                // The duration, then a comma and an optional title.
-                var seconds = value.Split(',')[0];
-                var isValid = double.TryParse(seconds, CultureInfo.InvariantCulture, out var length) && length is >= 0 and <= MaxSeconds;
-                duration = isValid ? TimeSpan.FromSeconds(length) : TimeSpan.Zero;
-            }
-            else if (tag == "#EXT-X-MAP")
-            {
-                isFragmentedMp4 = true;
-            }
-            else if (tag == "#EXT-X-ENDLIST")
-            {
-                hasEnded = true;
-            }
-            else if (!line.StartsWith('#'))
-            {
-                // A segment that can't be downloaded still takes its number.
-                if (Uri.TryCreate(url, line, out var address) && Playlists.IsHttp(address))
-                {
-                    var segment = new HlsSegment(sequence, duration, address);
-                    segments.Add(segment);
-                }
-                sequence++;
+                case "#EXT-X-TARGETDURATION":
+                    var isTarget = int.TryParse(value, CultureInfo.InvariantCulture, out var seconds) && seconds is > 0 and <= MaxSeconds;
+                    target = isTarget ? TimeSpan.FromSeconds(seconds) : null;
+                    break;
+                case "#EXT-X-MEDIA-SEQUENCE":
+                    sequence = long.TryParse(value, CultureInfo.InvariantCulture, out var first) ? first : 0;
+                    break;
+                case "#EXTINF":
+                    // The duration, then a comma and an optional title.
+                    var number = value.Split(',')[0];
+                    var isDuration = double.TryParse(number, CultureInfo.InvariantCulture, out var length) && length is >= 0 and <= MaxSeconds;
+                    duration = isDuration ? TimeSpan.FromSeconds(length) : TimeSpan.Zero;
+                    break;
+                case "#EXT-X-MAP":
+                    isFragmentedMp4 = true;
+                    break;
+                case "#EXT-X-ENDLIST":
+                    hasEnded = true;
+                    break;
+                case var _ when !line.StartsWith('#'):
+                    // A segment that can't be downloaded still takes its number.
+                    if (Uri.TryCreate(url, line, out var address) && Playlists.IsHttp(address))
+                    {
+                        var segment = new HlsSegment(sequence, duration, address);
+                        segments.Add(segment);
+                    }
+                    sequence++;
+                    break;
             }
         }
         return target is { } targetDuration ? new HlsPlaylist(targetDuration, segments.ToArray(), isFragmentedMp4, hasEnded) : null;
