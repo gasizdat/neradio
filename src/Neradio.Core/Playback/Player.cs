@@ -26,7 +26,10 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     // A title that repeats this one isn't a title change, even after a reconnect.
     private string? _lastTitle;
     private ITimer? _sleepTimer;
-    private DateTimeOffset _sleepAt;
+    // Tells a timer set again apart from the one before it, which may still fire.
+    private int _sleepTimers;
+    private long _sleepStarted;
+    private TimeSpan _sleepDuration;
 
     public PlayerState State { get; private set; }
     public Station? Station { get; private set; }
@@ -37,7 +40,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         get
         {
             lock (_gate)
-                return _sleepTimer is null ? null : _sleepAt - time.GetUtcNow();
+                return _sleepTimer is null ? null : _sleepDuration - time.GetElapsedTime(_sleepStarted);
         }
     }
 
@@ -117,8 +120,10 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         lock (_gate)
         {
             _sleepTimer?.Dispose();
-            _sleepAt = time.GetUtcNow() + duration;
-            _sleepTimer = time.CreateTimer(_ => SleepTimerRanOut(), null, duration, Timeout.InfiniteTimeSpan);
+            _sleepStarted = time.GetTimestamp();
+            _sleepDuration = duration;
+            var number = ++_sleepTimers;
+            _sleepTimer = time.CreateTimer(_ => SleepTimerRanOut(number), null, duration, Timeout.InfiniteTimeSpan);
         }
     }
 
@@ -133,13 +138,13 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
 
     // Whether the station plays, reconnects or is interrupted, it stops, and doesn't play again
     // after an interruption.
-    private void SleepTimerRanOut()
+    private void SleepTimerRanOut(int number)
     {
         CancellationTokenSource? run;
         lock (_gate)
         {
             // A timer set again, or cancelled, since this one fired.
-            if (_sleepTimer is null || time.GetUtcNow() < _sleepAt)
+            if (_sleepTimer is null || number != _sleepTimers)
                 return;
             CancelSleepTimer();
             run = End();
@@ -310,7 +315,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
             if (connection.PlayingSince is not { } since)
                 return null;
             session.LastPlayed = url;
-            return time.GetUtcNow() - since;
+            return time.GetElapsedTime(since);
         }
     }
 
@@ -321,7 +326,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         {
             if (_session != session || session.Attempt != connection)
                 return;
-            connection.PlayingSince = time.GetUtcNow();
+            connection.PlayingSince = time.GetTimestamp();
             // The engine plays a new stream only once the one before it has run out, so all of
             // that one's audio has been decoded.
             var rest = _audible?.ReachedTitles(long.MaxValue) ?? [];

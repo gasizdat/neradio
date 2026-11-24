@@ -16,6 +16,7 @@ public sealed class PlayerTests
     private static readonly Uri Hls = new("https://lists.example/station.m3u8");
 
     private readonly FakeTimeProvider _time = new();
+    private readonly SettableClock _clock;
     private readonly FakeEngine _engine = new();
     private readonly FakeHttp _http;
     private readonly Player _player;
@@ -24,9 +25,10 @@ public sealed class PlayerTests
 
     public PlayerTests()
     {
+        _clock = new SettableClock(_time);
         _http = new FakeHttp(_time);
         var client = new HttpClient(_http);
-        _player = new Player(client, _time, _engine);
+        _player = new Player(client, _clock, _engine);
         _player.TitleChanged += _titleChanges.Add;
         _start = _time.GetUtcNow();
     }
@@ -389,6 +391,22 @@ public sealed class PlayerTests
         _http.LastBody(Primary).End();
 
         Assert.Equal([0, 1, 61], RequestTimes());
+    }
+
+    [Fact]
+    public void ClockSetForwardWhilePlaying()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _clock.Shift = TimeSpan.FromHours(1);
+        Listen(Primary, 10);
+
+        _http.LastBody(Primary).End();
+        Assert.Single(_http.Requests);
+        Advance(1);
+
+        Assert.Equal([0, 11], RequestTimes());
     }
 
     // Playlist URLs
@@ -1007,6 +1025,23 @@ public sealed class PlayerTests
         Listen(Primary, 10 * 60);
 
         Assert.Equal(TimeSpan.FromMinutes(20), _player.SleepTimeLeft);
+    }
+
+    [Fact]
+    public void ClockSetBackWhileTheSleepTimerRuns()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+
+        _clock.Shift = TimeSpan.FromHours(-1);
+        Listen(Primary, 10 * 60);
+        Assert.Equal(TimeSpan.FromMinutes(20), _player.SleepTimeLeft);
+        Listen(Primary, 20 * 60);
+
+        Assert.Equal(PlayerState.Stopped, _player.State);
+        Assert.True(_engine.Streams[0].IsStopped);
     }
 
     [Fact]

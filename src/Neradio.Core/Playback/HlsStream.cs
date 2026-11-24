@@ -16,11 +16,11 @@ internal sealed class HlsStream(TimeProvider time)
     public async Task ReadAsync(HttpClient http, Uri url, string text, Connection connection)
     {
         var token = connection.Token;
-        var loadedAt = time.GetUtcNow();
+        var loadedAt = time.GetTimestamp();
         if (HlsPlaylist.Variant(url, text) is { } variant)
         {
             url = variant;
-            loadedAt = time.GetUtcNow();
+            loadedAt = time.GetTimestamp();
             text = await Playlists.DownloadAsync(http, url, token).ConfigureAwait(false) ?? "";
         }
 
@@ -59,10 +59,10 @@ internal sealed class HlsStream(TimeProvider time)
             // RFC 8216, 6.3.4: after a playlist that changed, wait for its last segment's duration;
             // after one that didn't, half the target duration. Both count from when it began loading.
             var wait = fresh.Length > 0 ? playlist.Segments[^1].Duration : playlist.TargetDuration / 2;
-            var due = loadedAt + wait - time.GetUtcNow();
+            var due = wait - time.GetElapsedTime(loadedAt);
             if (due > TimeSpan.Zero)
                 await time.DelayAsync(due, token).ConfigureAwait(false);
-            loadedAt = time.GetUtcNow();
+            loadedAt = time.GetTimestamp();
             text = await Playlists.DownloadAsync(http, url, token).ConfigureAwait(false) ?? "";
         }
     }
