@@ -278,6 +278,18 @@ public sealed class PlayerTests
     }
 
     [Fact]
+    public void NetworkChangeWhileAnAlternatePlays()
+    {
+        _http.Stream(Alternate);
+        _player.Play(Station(Primary, Alternate));
+        Plays(Alternate);
+
+        _player.NetworkChanged();
+
+        Assert.Equal([Primary, Alternate, Alternate], _http.Requested);
+    }
+
+    [Fact]
     public void NetworkChangeAfterAStop()
     {
         _http.Stream(Primary);

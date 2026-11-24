@@ -287,7 +287,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     private async Task<TimeSpan?> AttemptAsync(Session session, Uri url, Func<Connection, Task> read, CancellationToken token)
     {
         using var connection = new Connection(engine, time, token);
-        connection.Playing += () => OnPlaying(session, connection);
+        connection.Playing += () => OnPlaying(session, url, connection);
         connection.TitleChanged += title => OnOggTitle(connection, title);
         lock (_gate)
         {
@@ -314,18 +314,18 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
                 session.Skipped.Add(url);
             if (connection.PlayingSince is not { } since)
                 return null;
-            session.LastPlayed = url;
             return time.GetElapsedTime(since);
         }
     }
 
-    private void OnPlaying(Session session, Connection connection)
+    private void OnPlaying(Session session, Uri url, Connection connection)
     {
         string[] changes;
         lock (_gate)
         {
             if (_session != session || session.Attempt != connection)
                 return;
+            session.LastPlayed = url;
             connection.PlayingSince = time.GetTimestamp();
             // The engine plays a new stream only once the one before it has run out, so all of
             // that one's audio has been decoded.
