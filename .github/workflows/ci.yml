@@ -12,13 +12,30 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
 
+    env:
+      # An SDK of our own rather than the runner's in Program Files: there, workloads install as
+      # MSIs, along with every one Visual Studio has (iOS, Mac Catalyst, WebAssembly). Here, only
+      # the ones the projects need install, from NuGet packages, and the result can be cached.
+      DOTNET_INSTALL_DIR: ${{ github.workspace }}\.dotnet
+
     steps:
       - uses: actions/checkout@v5
 
-      - name: Setup .NET 10
+      # Keyed on what decides the contents: the SDK channel set below, and the projects' target
+      # frameworks and packages.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .dotnet
+            ~/.nuget/packages
+          key: ${{ runner.os }}-dotnet-${{ hashFiles('.github/workflows/ci.yml', 'src/**/*.csproj', 'tests/**/*.csproj', 'Directory.Packages.props') }}
+
+      # SDK 11 builds the net10.0 projects. It's the one development uses, and the one the runner
+      # used before, as the newest it had.
+      - name: Setup .NET 11
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '11.0.x'
 
       - name: Check formatting
         run: dotnet format whitespace --folder --include src/ tests/ --exclude **/bin/ **/obj/ --verify-no-changes
