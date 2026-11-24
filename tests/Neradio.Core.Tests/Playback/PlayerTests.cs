@@ -64,7 +64,7 @@ public sealed class PlayerTests
         _player.Play(station);
         Plays(Primary);
 
-        _player.Stop();
+        _player.Stop(StopKind.User);
         Advance(60);
         _player.Play(station);
         Plays(Primary);
@@ -83,7 +83,7 @@ public sealed class PlayerTests
         _player.Play(station);
         Plays(Primary);
 
-        _player.Stop();
+        _player.Stop(StopKind.User);
 
         Assert.Equal(PlayerState.Stopped, _player.State);
         Assert.Same(station, _player.Station);
@@ -100,7 +100,7 @@ public sealed class PlayerTests
         _http.LastBody(Primary).End();
         Assert.Equal(PlayerState.Reconnecting, _player.State);
 
-        _player.Stop();
+        _player.Stop(StopKind.User);
         Advance(600);
 
         Assert.Single(_http.Requests);
@@ -281,7 +281,7 @@ public sealed class PlayerTests
         _http.Stream(Primary);
         _player.Play(Station(Primary));
         Plays(Primary);
-        _player.Stop();
+        _player.Stop(StopKind.User);
 
         _player.NetworkChanged();
 
@@ -567,7 +567,7 @@ public sealed class PlayerTests
         Advance(1);
         Assert.Equal([Primary, Alternate, Alternate, Alternate], _http.Requested);
 
-        _player.Stop();
+        _player.Stop(StopKind.User);
         _player.Play(station);
         Assert.Equal(Primary, _http.Requested.Last());
     }
@@ -617,6 +617,159 @@ public sealed class PlayerTests
 
         Assert.Equal([0, 1, 3, 7], RequestTimes());
         Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    // Phone calls and other interruptions
+
+    [Fact]
+    public void IncomingCall()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+
+        _player.Stop(StopKind.Interruption);
+        Assert.Equal(PlayerState.Interrupted, _player.State);
+        Assert.True(_engine.Streams[0].IsStopped);
+        Advance(120);
+        Assert.Single(_http.Requests);
+        _player.EndInterruption();
+        Plays(Primary);
+
+        Assert.Equal([0, 120], RequestTimes());
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
+    public void AfterAnInterruptionThePrimaryComesFirst()
+    {
+        _http.Stream(Alternate);
+        _player.Play(Station(Primary, Alternate));
+        Plays(Alternate);
+        _player.Stop(StopKind.Interruption);
+
+        _player.EndInterruption();
+
+        Assert.Equal([Primary, Alternate, Primary, Alternate], _http.Requested);
+    }
+
+    [Fact]
+    public void AfterAnInterruptionTheWaitsStartOver()
+    {
+        _player.Play(Station(Primary));
+        foreach (var wait in new[] { 1, 2, 4, 8, 16, 30 })
+            Advance(wait);
+        _player.Stop(StopKind.Interruption);
+
+        _player.EndInterruption();
+        Advance(1);
+
+        Assert.Equal([0, 1, 3, 7, 15, 31, 61, 61, 62], RequestTimes());
+    }
+
+    [Fact]
+    public void SameTitleAfterAnInterruption()
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+        _player.Stop(StopKind.Interruption);
+
+        _player.EndInterruption();
+        SendIcy("Artist A - Song 1");
+        _engine.Streams[^1].Play();
+        Decode();
+
+        Assert.Equal("Artist A - Song 1", _player.Title);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    [Fact]
+    public void InterruptionWhileConnecting()
+    {
+        _http.Hang(Primary);
+        _player.Play(Station(Primary));
+
+        _player.Stop(StopKind.Interruption);
+        _http.Stream(Primary);
+        _player.EndInterruption();
+        Plays(Primary);
+
+        Assert.Equal(2, _http.Requests.Count);
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
+    public void StoppedDuringACall()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.Stop(StopKind.Interruption);
+
+        _player.Stop(StopKind.User);
+        _player.EndInterruption();
+
+        Assert.Single(_http.Requests);
+        Assert.Equal(PlayerState.Stopped, _player.State);
+    }
+
+    [Fact]
+    public void HeadphonesUnpluggedDuringACall()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.Stop(StopKind.Interruption);
+
+        _player.Stop(StopKind.System);
+        _player.EndInterruption();
+
+        Assert.Single(_http.Requests);
+        Assert.Equal(PlayerState.Stopped, _player.State);
+    }
+
+    [Fact]
+    public void InterruptionAfterAStop()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.Stop(StopKind.User);
+
+        _player.Stop(StopKind.Interruption);
+        _player.EndInterruption();
+
+        Assert.Single(_http.Requests);
+        Assert.Equal(PlayerState.Stopped, _player.State);
+    }
+
+    [Fact]
+    public void SecondInterruptionDuringTheFirst()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.Stop(StopKind.Interruption);
+
+        _player.Stop(StopKind.Interruption);
+        _player.EndInterruption();
+
+        Assert.Equal(2, _http.Requests.Count);
+    }
+
+    [Fact]
+    public void NetworkChangeDuringAnInterruption()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.Stop(StopKind.Interruption);
+
+        _player.NetworkChanged();
+
+        Assert.Single(_http.Requests);
+        Assert.Equal(PlayerState.Interrupted, _player.State);
     }
 
     // Track titles
@@ -743,7 +896,7 @@ public sealed class PlayerTests
         var station = PlayIcy();
         SendIcy("Artist A - Song 1");
         Decode();
-        _player.Stop();
+        _player.Stop(StopKind.User);
 
         _player.Play(station);
         SendIcy();
@@ -761,7 +914,7 @@ public sealed class PlayerTests
         SendIcy("Artist A - Song 1");
         Decode();
 
-        _player.Stop();
+        _player.Stop(StopKind.User);
 
         Assert.Null(_player.Title);
     }

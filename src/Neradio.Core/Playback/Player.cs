@@ -34,32 +34,45 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
 
     public void Play(Station station)
     {
-        var session = new Session(station);
         CancellationTokenSource? previous;
+        Session session;
         lock (_gate)
         {
             previous = End();
-            _session = session;
             _lastTitle = null;
-            Station = station;
-            State = PlayerState.Connecting;
-            _titlePoll ??= time.CreateTimer(_ => ShowReachedTitles(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-            _titlePoll.Change(TitlePoll, TitlePoll);
+            session = Start(station);
         }
         previous?.Cancel();
         _ = RunAsync(session);
     }
 
-    // The station stays selected, and Play connects to its live broadcast again.
-    public void Stop()
+    // The station stays selected, and Play connects to its live broadcast again. An interruption
+    // counts only while the station plays or connects; any other stop ends one.
+    public void Stop(StopKind kind)
     {
         CancellationTokenSource? run;
         lock (_gate)
         {
+            if (kind == StopKind.Interruption && _session is null)
+                return;
             run = End();
-            State = PlayerState.Stopped;
+            State = kind == StopKind.Interruption ? PlayerState.Interrupted : PlayerState.Stopped;
         }
         run?.Cancel();
+    }
+
+    // The station plays again as if the user had played it, but a repeat of its last title still
+    // isn't a title change.
+    public void EndInterruption()
+    {
+        Session session;
+        lock (_gate)
+        {
+            if (State != PlayerState.Interrupted)
+                return;
+            session = Start(Station!);
+        }
+        _ = RunAsync(session);
     }
 
     // The old connection would hang until it timed out, so it's dropped even while audio still
@@ -81,6 +94,18 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         }
         old.Cancel();
         _ = RunAsync(session);
+    }
+
+    // From the primary stream, with the waits started over.
+    private Session Start(Station station)
+    {
+        var session = new Session(station);
+        _session = session;
+        Station = station;
+        State = PlayerState.Connecting;
+        _titlePoll ??= time.CreateTimer(_ => ShowReachedTitles(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        _titlePoll.Change(TitlePoll, TitlePoll);
+        return session;
     }
 
     // Stops the audio. The run it returns is cancelled once out of the lock: its awaits end on
