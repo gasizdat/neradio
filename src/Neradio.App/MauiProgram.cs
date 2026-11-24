@@ -1,4 +1,5 @@
 using Neradio.Core;
+using Neradio.Engine.Bass;
 
 namespace Neradio.App;
 
@@ -14,6 +15,7 @@ public static class MauiProgram
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
         builder.Services.AddNeradioCore();
+        builder.Services.AddNeradioEngineBass();
 
         return builder.Build();
     }

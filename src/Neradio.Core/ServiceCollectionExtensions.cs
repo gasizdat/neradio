@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Neradio.Core.Playback;
 
 namespace Neradio.Core;
 
@@ -14,6 +15,7 @@ public static class ServiceCollectionExtensions
             var handler = new SocketsHttpHandler();
             return new HttpClient(handler);
         });
+        services.AddSingleton<Player>();
         return services;
     }
 }

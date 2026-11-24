@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Neradio.Core.Tests" />
+    <InternalsVisibleTo Include="Neradio.Engine.Bass" />
   </ItemGroup>
 
 </Project>
