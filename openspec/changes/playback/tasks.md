@@ -17,7 +17,7 @@
 
 ## 2. Sleep timer
 
-- [ ] 2.1 Add the sleep timer to the player: time left, stopping when it runs out, and cancelling by the user's stops only. Verify that tests pin every scenario of "Setting the sleep timer" and "Cancelling the sleep timer" except "Screen off on Android".
+- [x] 2.1 Add the sleep timer to the player: time left, stopping when it runs out, and cancelling by the user's stops only. Verify that tests pin every scenario of "Setting the sleep timer" and "Cancelling the sleep timer" except "Screen off on Android".
 
 ## 3. Engine adapter
 

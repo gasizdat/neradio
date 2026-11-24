@@ -977,6 +977,185 @@ public sealed class PlayerTests
         Assert.Equal(["Artist A - Song 1", "Artist B - Song 2"], _titleChanges);
     }
 
+    // Setting the sleep timer
+
+    [Fact]
+    public void SleepTimerRunsOut()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+        Listen(Primary, 30 * 60 - 1);
+        Assert.Equal(PlayerState.Playing, _player.State);
+        Advance(1);
+
+        Assert.Equal(PlayerState.Stopped, _player.State);
+        Assert.True(_engine.Streams[0].IsStopped);
+        Assert.Null(_player.SleepTimeLeft);
+    }
+
+    [Fact]
+    public void TimeLeftIsShown()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+        Listen(Primary, 10 * 60);
+
+        Assert.Equal(TimeSpan.FromMinutes(20), _player.SleepTimeLeft);
+    }
+
+    [Fact]
+    public void SleepTimerRunsOutWhileReconnecting()
+    {
+        _player.Play(Station(Primary));
+        _player.SetSleepTimer(TimeSpan.FromMinutes(1));
+
+        Advance(60);
+        var attempts = _http.Requests.Count;
+        Advance(600);
+
+        Assert.Equal(PlayerState.Stopped, _player.State);
+        Assert.Equal(attempts, _http.Requests.Count);
+    }
+
+    [Fact]
+    public void SleepTimerRunsOutDuringAnInterruption()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(1));
+        _player.Stop(StopKind.Interruption);
+
+        Advance(60);
+        _player.EndInterruption();
+
+        Assert.Equal(PlayerState.Stopped, _player.State);
+        Assert.Single(_http.Requests);
+    }
+
+    [Fact]
+    public void SleepTimerSetAgain()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+        Listen(Primary, 10 * 60);
+
+        _player.SetSleepTimer(TimeSpan.FromMinutes(5));
+        Listen(Primary, 5 * 60);
+
+        Assert.Equal(PlayerState.Stopped, _player.State);
+    }
+
+    // Cancelling the sleep timer
+
+    [Fact]
+    public void UserCancelsTheSleepTimer()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+
+        _player.CancelSleepTimer();
+        Listen(Primary, 31 * 60);
+
+        Assert.Equal(PlayerState.Playing, _player.State);
+        Assert.Null(_player.SleepTimeLeft);
+    }
+
+    [Fact]
+    public void UserStopsPlaybackWhileTheSleepTimerRuns()
+    {
+        _http.Stream(Primary);
+        var station = Station(Primary);
+        _player.Play(station);
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+
+        _player.Stop(StopKind.User);
+        _player.Play(station);
+        Plays(Primary);
+        Listen(Primary, 31 * 60);
+
+        Assert.Null(_player.SleepTimeLeft);
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
+    public void AnotherStationWhileTheSleepTimerRuns()
+    {
+        _http.Stream(Primary);
+        _http.Stream(Other);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+        Listen(Primary, 10 * 60);
+
+        _player.Play(Station(Other));
+        Plays(Other);
+        Assert.Equal(TimeSpan.FromMinutes(20), _player.SleepTimeLeft);
+        Listen(Other, 20 * 60);
+
+        Assert.Equal(PlayerState.Stopped, _player.State);
+    }
+
+    [Fact]
+    public void PhoneCallWhileTheSleepTimerRuns()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+
+        _player.Stop(StopKind.Interruption);
+        Advance(5 * 60);
+        _player.EndInterruption();
+        Plays(Primary);
+
+        Assert.Equal(PlayerState.Playing, _player.State);
+        Assert.Equal(TimeSpan.FromMinutes(25), _player.SleepTimeLeft);
+    }
+
+    [Fact]
+    public void AnotherAppTakesOverWhileTheSleepTimerRuns()
+    {
+        _http.Stream(Primary);
+        var station = Station(Primary);
+        _player.Play(station);
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+
+        _player.Stop(StopKind.System);
+        Advance(5 * 60);
+        _player.Play(station);
+        Plays(Primary);
+        Assert.Equal(TimeSpan.FromMinutes(25), _player.SleepTimeLeft);
+        Listen(Primary, 25 * 60);
+
+        Assert.Equal(PlayerState.Stopped, _player.State);
+    }
+
+    [Fact]
+    public void UnsupportedStationKeepsTheSleepTimer()
+    {
+        _http.Stream(Primary, "audio/flac");
+        _player.Play(Station(Primary));
+        _player.SetSleepTimer(TimeSpan.FromMinutes(30));
+
+        _engine.Streams[0].RejectFormat();
+
+        Assert.Equal(PlayerState.Unsupported, _player.State);
+        Assert.Equal(TimeSpan.FromMinutes(30), _player.SleepTimeLeft);
+    }
+
     private static Station Station(params Uri[] streams) =>
         new() { Name = "Station", PrimaryStream = streams[0], AlternateStreams = streams[1..] };
 

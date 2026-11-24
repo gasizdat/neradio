@@ -24,10 +24,21 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     private ITimer? _titlePoll;
     // A title that repeats this one isn't a title change, even after a reconnect.
     private string? _lastTitle;
+    private ITimer? _sleepTimer;
+    private DateTimeOffset _sleepAt;
 
     public PlayerState State { get; private set; }
     public Station? Station { get; private set; }
     public string? Title { get; private set; }
+
+    public TimeSpan? SleepTimeLeft
+    {
+        get
+        {
+            lock (_gate)
+                return _sleepTimer is null ? null : _sleepAt - time.GetUtcNow();
+        }
+    }
 
     // Raised outside the player's lock, on any thread.
     public event Action<string>? TitleChanged;
@@ -47,7 +58,8 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     }
 
     // The station stays selected, and Play connects to its live broadcast again. An interruption
-    // counts only while the station plays or connects; any other stop ends one.
+    // counts only while the station plays or connects; any other stop ends one. Only the user's
+    // stop cancels the sleep timer.
     public void Stop(StopKind kind)
     {
         CancellationTokenSource? run;
@@ -55,6 +67,8 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         {
             if (kind == StopKind.Interruption && _session is null)
                 return;
+            if (kind == StopKind.User)
+                CancelSleepTimer();
             run = End();
             State = kind == StopKind.Interruption ? PlayerState.Interrupted : PlayerState.Stopped;
         }
@@ -94,6 +108,43 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         }
         old.Cancel();
         _ = RunAsync(session);
+    }
+
+    // Replaces a timer that runs.
+    public void SetSleepTimer(TimeSpan duration)
+    {
+        lock (_gate)
+        {
+            _sleepTimer?.Dispose();
+            _sleepAt = time.GetUtcNow() + duration;
+            _sleepTimer = time.CreateTimer(_ => SleepTimerRanOut(), null, duration, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    public void CancelSleepTimer()
+    {
+        lock (_gate)
+        {
+            _sleepTimer?.Dispose();
+            _sleepTimer = null;
+        }
+    }
+
+    // Whether the station plays, reconnects or is interrupted, it stops, and doesn't play again
+    // after an interruption.
+    private void SleepTimerRanOut()
+    {
+        CancellationTokenSource? run;
+        lock (_gate)
+        {
+            // A timer set again, or cancelled, since this one fired.
+            if (_sleepTimer is null || time.GetUtcNow() < _sleepAt)
+                return;
+            CancelSleepTimer();
+            run = End();
+            State = PlayerState.Stopped;
+        }
+        run?.Cancel();
     }
 
     // From the primary stream, with the waits started over.
