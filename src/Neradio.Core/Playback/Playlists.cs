@@ -51,7 +51,8 @@ internal static partial class Playlists
                 return null;
             text.Write(buffer, 0, read);
         }
-        var content = Encoding.UTF8.GetString(text.GetBuffer(), 0, (int)text.Length);
+        var bytes = text.GetBuffer();
+        var content = Encoding.UTF8.GetString(bytes, 0, (int)text.Length);
         return content.TrimStart('﻿');
     }
 

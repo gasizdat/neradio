@@ -25,7 +25,10 @@ sealed class FakeHttp(TimeProvider time) : HttpMessageHandler
             Bodies[url].Add(body);
             var response = Response(HttpStatusCode.OK, contentType, body);
             if (metaInt > 0)
-                response.Headers.Add("icy-metaint", metaInt.ToString());
+            {
+                var interval = metaInt.ToString();
+                response.Headers.Add("icy-metaint", interval);
+            }
             return Task.FromResult(response);
         };
     }
