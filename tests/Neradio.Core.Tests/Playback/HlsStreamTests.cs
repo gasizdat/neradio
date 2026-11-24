@@ -198,6 +198,34 @@ public sealed class HlsStreamTests
         Assert.Equal("[112][113][114][115][116][117]", Played(1));
     }
 
+    // Numbering that starts over
+
+    [Fact]
+    public void EncoderStartsItsNumberingOver()
+    {
+        Serve(95, 100);
+        Read(95, 100);
+
+        Serve(0, 1);
+        _time.Advance(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("[95][96][97][98][99][100][0][1]", Played());
+    }
+
+    [Fact]
+    public void PlaylistServedLateIsNotANewNumbering()
+    {
+        Serve(95, 100);
+        Read(95, 100);
+
+        Serve(94, 99);
+        _time.Advance(TimeSpan.FromSeconds(10));
+        Serve(96, 101);
+        _time.Advance(TimeSpan.FromSeconds(5));
+
+        Assert.Equal("[95][96][97][98][99][100][101]", Played());
+    }
+
     // HLS segments
 
     [Fact]

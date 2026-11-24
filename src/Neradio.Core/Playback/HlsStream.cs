@@ -33,8 +33,7 @@ internal sealed class HlsStream(TimeProvider time)
             }
 
             connection.AllowFor(playlist.TargetDuration);
-            var oldest = playlist.Segments.FirstOrDefault();
-            if (oldest is not null && (_next is null || _next < oldest.Sequence))
+            if (StartsLive(playlist.Segments))
                 _next = LiveStart(playlist.Segments);
             var fresh = playlist.Segments
                 .Where(segment => segment.Sequence >= _next)
@@ -66,6 +65,13 @@ internal sealed class HlsStream(TimeProvider time)
             text = await Playlists.DownloadAsync(http, url, token).ConfigureAwait(false) ?? "";
         }
     }
+
+    // When the next segment is older than the playlist, after a long outage, or so far past it that
+    // the encoder must have started its numbering over. A playlist a server serves late is behind
+    // by less than its length.
+    private bool StartsLive(HlsSegment[] segments) =>
+        segments.Length > 0
+        && (_next is not { } next || next < segments[0].Sequence || next > segments[^1].Sequence + segments.Length);
 
     private static long LiveStart(HlsSegment[] segments)
     {
