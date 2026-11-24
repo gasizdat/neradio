@@ -1,4 +1,4 @@
-namespace Neradio.Core.Playback;
+namespace Neradio.Core.Playback.Abstractions;
 
 // Decodes and mixes the streams the core downloads.
 public interface IAudioEngine

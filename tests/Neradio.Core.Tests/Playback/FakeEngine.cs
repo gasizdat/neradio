@@ -1,4 +1,4 @@
-using Neradio.Core.Playback;
+using Neradio.Core.Playback.Abstractions;
 
 namespace Neradio.Core.Tests.Playback;
 
