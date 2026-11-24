@@ -24,8 +24,9 @@
   </ItemGroup>
 
   <!-- BASS is closed source and never committed: its archives are fetched from un4seen at build
-       time. The app makes every connection, so neither BASS_SSL nor BASSHLS is needed. -->
-  <Target Name="FetchBass" BeforeTargets="BeforeBuild">
+       time. The app makes every connection, so neither BASS_SSL nor BASSHLS is needed. A build
+       that doesn't build this project, as Visual Studio's, still asks it for the files to copy. -->
+  <Target Name="FetchBass" BeforeTargets="BeforeBuild;GetCopyToOutputDirectoryItems">
     <PropertyGroup>
       <BassSuffix Condition="'$(TargetPlatformIdentifier)' == 'android'">-android</BassSuffix>
       <BassDir>$(BaseIntermediateOutputPath)bass$(BassSuffix)\</BassDir>
