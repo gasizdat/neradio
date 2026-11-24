@@ -46,8 +46,10 @@ sealed class FakeAudioStream(string contentType) : IAudioStream
     {
         if (IsFull)
         {
-            _room = new TaskCompletionSource();
-            await _room.Task.WaitAsync(cancellation).ConfigureAwait(false);
+            var room = new TaskCompletionSource();
+            _room = room;
+            using var registration = cancellation.Register(() => room.TrySetCanceled(cancellation));
+            await room.Task.ConfigureAwait(false);
         }
         _written.Write(data.Span);
     }
