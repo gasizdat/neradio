@@ -5,7 +5,7 @@ namespace Neradio.Core.Playback;
 // unsupported. Disposing it leaves its audio playing: that's for its owner to stop.
 internal sealed class Connection : IDisposable
 {
-    private static readonly TimeSpan Limit = TimeSpan.FromSeconds(10);
+    public static readonly TimeSpan Limit = TimeSpan.FromSeconds(10);
 
     private readonly IAudioEngine _engine;
     private readonly CancellationTokenSource _stall;

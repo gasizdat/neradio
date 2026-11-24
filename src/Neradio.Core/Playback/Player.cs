@@ -122,22 +122,73 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         }
     }
 
-    // Tries each stream once, without waits, until one plays. Returns how long its audio played
-    // before its connection was lost; null when none played.
+    // Tries each stream once, without waits, until one plays: a playlist's streams in its place.
+    // Returns how long its audio played before its connection was lost; null when none played.
     private async Task<TimeSpan?> RoundAsync(Session session, CancellationToken token)
     {
+        var tried = new HashSet<Uri>();
         foreach (var url in session.RoundOrder())
         {
-            if (session.Skipped.Contains(url))
-                continue;
-            var played = await AttemptAsync(session, url, token).ConfigureAwait(false);
+            var played = Playlists.IsPlaylist(url)
+                ? await PlaylistAsync(session, url, tried, token).ConfigureAwait(false)
+                : await StreamAsync(session, url, tried, token).ConfigureAwait(false);
             if (played is not null)
                 return played;
         }
         return null;
     }
 
-    private async Task<TimeSpan?> AttemptAsync(Session session, Uri url, CancellationToken token)
+    // Downloaded each time a round reaches it. A playlist that can't be downloaded within the
+    // limit, or lists no usable stream, is a stream that failed to connect.
+    private async Task<TimeSpan?> PlaylistAsync(Session session, Uri url, HashSet<Uri> tried, CancellationToken token)
+    {
+        if (session.Skipped.Contains(url) || !tried.Add(url))
+            return null;
+
+        var text = await DownloadPlaylistAsync(url, token).ConfigureAwait(false);
+        if (text is null)
+            return null;
+        if (Playlists.IsHls(text))
+        {
+            var hls = session.Hls(url, time);
+            return await AttemptAsync(session, url, connection => hls.ReadAsync(http, url, text, connection), token).ConfigureAwait(false);
+        }
+
+        var streams = Playlists.Entries(url, text);
+        foreach (var stream in streams)
+        {
+            var played = await StreamAsync(session, stream, tried, token).ConfigureAwait(false);
+            if (played is not null)
+                return played;
+        }
+        if (streams.Length > 0 && streams.All(session.Skipped.Contains))
+            session.Skipped.Add(url);
+        return null;
+    }
+
+    private async Task<string?> DownloadPlaylistAsync(Uri url, CancellationToken token)
+    {
+        using var limit = new CancellationTokenSource(Connection.Limit, time);
+        using var download = CancellationTokenSource.CreateLinkedTokenSource(token, limit.Token);
+        try
+        {
+            return await Playlists.DownloadAsync(http, url, download.Token).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
+        {
+            token.ThrowIfCancellationRequested();
+            return null;
+        }
+    }
+
+    private Task<TimeSpan?> StreamAsync(Session session, Uri url, HashSet<Uri> tried, CancellationToken token)
+    {
+        if (session.Skipped.Contains(url) || !tried.Add(url))
+            return Task.FromResult<TimeSpan?>(null);
+        return AttemptAsync(session, url, connection => IcyStream.ReadAsync(http, url, connection), token);
+    }
+
+    private async Task<TimeSpan?> AttemptAsync(Session session, Uri url, Func<Connection, Task> read, CancellationToken token)
     {
         using var connection = new Connection(engine, time, token);
         connection.Playing += () => OnPlaying(session, connection);
@@ -148,7 +199,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         }
         try
         {
-            await IcyStream.ReadAsync(http, url, connection).ConfigureAwait(false);
+            await read(connection).ConfigureAwait(false);
         }
         catch (Exception e) when (e is HttpRequestException or IOException or OperationCanceledException)
         {
@@ -188,6 +239,8 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     // One station's playback, from Play until it stops.
     private sealed class Session(Station station)
     {
+        private readonly Dictionary<Uri, HlsStream> _hls = [];
+
         public CancellationTokenSource Run { get; private set; } = new();
         public Uri[] Streams { get; } = [station.PrimaryStream, .. station.AlternateStreams];
         public HashSet<Uri> Skipped { get; } = [];
@@ -196,9 +249,21 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         public int Rounds { get; set; }
         public Connection? Attempt { get; set; }
 
-        // The stream that played last first, then the others in the station's order.
+        // The stream that played last first, even one a playlist listed, then the others in the
+        // station's order.
         public IEnumerable<Uri> RoundOrder() =>
             LastPlayed is null ? Streams : Streams.Where(url => url != LastPlayed).Prepend(LastPlayed);
+
+        // Kept across reconnects, so that one goes on after the last segment downloaded.
+        public HlsStream Hls(Uri url, TimeProvider time)
+        {
+            if (!_hls.TryGetValue(url, out var hls))
+            {
+                hls = new HlsStream(time);
+                _hls.Add(url, hls);
+            }
+            return hls;
+        }
 
         // Starts the waits over, in a new run. Returns the old run, to cancel.
         public CancellationTokenSource Restart()

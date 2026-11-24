@@ -10,6 +10,9 @@ public sealed class PlayerTests
     private static readonly Uri Primary = new("https://a.example/live");
     private static readonly Uri Alternate = new("https://b.example/live");
     private static readonly Uri Other = new("https://c.example/live");
+    private static readonly Uri Pls = new("https://lists.example/station.pls");
+    private static readonly Uri M3u = new("https://lists.example/station.m3u");
+    private static readonly Uri Hls = new("https://lists.example/station.m3u8");
 
     private readonly FakeTimeProvider _time = new();
     private readonly FakeEngine _engine = new();
@@ -383,6 +386,149 @@ public sealed class PlayerTests
         _http.LastBody(Primary).End();
 
         Assert.Equal([0, 1, 61], RequestTimes());
+    }
+
+    // Playlist URLs
+
+    [Fact]
+    public void PlsPlaylist()
+    {
+        _http.Text(Pls, "[playlist]\nNumberOfEntries=2\nFile2=https://b.example/live\nFile1=https://a.example/live\n", "audio/x-scpls");
+        _http.Stream(Alternate);
+
+        _player.Play(Station(Pls));
+        Plays(Alternate);
+
+        Assert.Equal([Pls, Primary, Alternate], _http.Requested);
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
+    public void M3uPlaylist()
+    {
+        _http.Text(M3u, "#EXTM3U\n#EXTINF:-1,Station\nlive\n");
+        var listed = new Uri("https://lists.example/live");
+        _http.Stream(listed);
+
+        _player.Play(Station(M3u));
+        Plays(listed);
+
+        Assert.Equal([M3u, listed], _http.Requested);
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
+    public void PlaylistWithAByteOrderMark()
+    {
+        _http.Text(M3u, "﻿#EXTM3U\nhttps://a.example/live\n");
+        _http.Stream(Primary);
+
+        _player.Play(Station(M3u));
+        Plays(Primary);
+
+        Assert.Equal([M3u, Primary], _http.Requested);
+    }
+
+    [Fact]
+    public void HlsPlaylistIsNotAListOfStreams()
+    {
+        var segment = new Uri("https://lists.example/100.ts");
+        _http.Text(Hls, "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:100\n#EXTINF:10,\n100.ts\n", "application/vnd.apple.mpegurl");
+        _http.Bytes(segment, MpegTsWriter.Segment([1, 2, 3]));
+
+        _player.Play(Station(Hls));
+        _engine.Streams[0].Play();
+
+        Assert.Equal([Hls, segment], _http.Requested);
+        Assert.Equal("audio/aac", _engine.Streams[0].ContentType);
+        Assert.Equal([1, 2, 3], _engine.Streams[0].Written);
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
+    public void HlsReconnectGoesOnAfterTheLastSegment()
+    {
+        _http.Text(Hls, "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:100\n#EXTINF:10,\n100.ts\n");
+        _http.Bytes(new Uri("https://lists.example/100.ts"), MpegTsWriter.Segment([100]));
+        _player.Play(Station(Hls));
+        _engine.Streams[0].Play();
+
+        _player.NetworkChanged();
+
+        _http.Text(Hls, "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:100\n#EXTINF:10,\n100.ts\n#EXTINF:10,\n101.ts\n");
+        _http.Bytes(new Uri("https://lists.example/101.ts"), MpegTsWriter.Segment([101]));
+        Advance(5);
+
+        Assert.Equal([101], _engine.Streams[1].Written);
+        Assert.Single(_http.Requested, url => url.AbsolutePath == "/100.ts");
+    }
+
+    [Fact]
+    public void PlaylistCannotBeDownloaded()
+    {
+        _player.Play(Station(Pls));
+        Advance(1);
+
+        Assert.Equal([0, 1], RequestTimes(Pls));
+        Assert.Equal(PlayerState.Reconnecting, _player.State);
+    }
+
+    [Fact]
+    public void PlaylistServerDoesNotAnswer()
+    {
+        _http.Hang(Pls);
+        _http.Stream(Alternate);
+        _player.Play(Station(Pls, Alternate));
+
+        Advance(9.9);
+        Assert.Equal([Pls], _http.Requested);
+        Advance(0.1);
+        Plays(Alternate);
+
+        Assert.Equal([0, 10], RequestTimes());
+        Assert.Equal(PlayerState.Playing, _player.State);
+    }
+
+    [Fact]
+    public void PlaylistWithoutUsableStreams()
+    {
+        _http.Text(Pls, "[playlist]\nFile1=ftp://a.example/live\nTitle1=Station\n", "audio/x-scpls");
+
+        _player.Play(Station(Pls));
+        Advance(1);
+
+        Assert.Equal([0, 1], RequestTimes(Pls));
+        Assert.Equal(PlayerState.Reconnecting, _player.State);
+    }
+
+    [Fact]
+    public void LostConnectionOnAStreamFromAPlaylist()
+    {
+        _http.Text(Pls, "[playlist]\nFile1=https://a.example/live\nFile2=https://b.example/live\n", "audio/x-scpls");
+        _http.Stream(Alternate);
+        _player.Play(Station(Pls));
+        Plays(Alternate);
+        Listen(Alternate, 60);
+
+        _http.LastBody(Alternate).End();
+        Assert.Equal([Pls, Primary, Alternate, Alternate], _http.Requested);
+        _http.LastBody(Alternate).End();
+
+        Assert.Equal([Pls, Primary, Alternate, Alternate, Pls, Primary], _http.Requested);
+    }
+
+    [Fact]
+    public void PlaylistOfUnsupportedStreams()
+    {
+        _http.Text(Pls, "[playlist]\nFile1=https://a.example/live\n", "audio/x-scpls");
+        _http.Stream(Primary, "audio/flac");
+        _player.Play(Station(Pls));
+
+        _engine.Streams[0].RejectFormat();
+        Advance(600);
+
+        Assert.Equal(PlayerState.Unsupported, _player.State);
+        Assert.Equal([Pls, Primary], _http.Requested);
     }
 
     // Unsupported formats
