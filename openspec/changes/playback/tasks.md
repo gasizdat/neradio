@@ -46,6 +46,9 @@
 ## 6. Verification
 
 - [ ] 6.1 Run the CI entry point from #9: first the tests added here, then the full suite. Verify that the build and the tests pass on both Windows and Android, and that the PR lists every hand-checked scenario with its result.
+- [ ] 6.2 Before archiving, review the code against design.md and bring the two in line. Known so far:
+  - The seam has no "buffered audio ran out" event. The engine switches to a new stream on its own once the old one's audio has run out, as `IAudioEngine.Open` says. The adapter (3.1) handles that inside the switch.
+  - The seam has no volume. Nothing in the core sets it. 4.2 adds it with its caller.
 
 ## Workflow follow-up
 
