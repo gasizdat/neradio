@@ -4,7 +4,7 @@
 
 ## 1. Player logic
 
-- [ ] 1.1 Add the engine seam and a fake engine for the tests, as in design.md. Verify the solution builds for every target.
+- [x] 1.1 Add the engine seam and a fake engine for the tests, as in design.md. Verify the solution builds for every target.
 - [ ] 1.2 Add the connections: an `HttpClient` on a `SocketsHttpHandler` that asks for ICY metadata, takes it out of the stream and passes the rest to the engine, with the HTTP status, the content type and the bytes arriving; and HLS: the variant with the highest bandwidth, each segment once and in order, the AAC taken out of MPEG-TS and packed-audio segments, and the next segment after a reconnect. Verify that tests pin, on a fake HTTP handler with recorded stream data, the ICY metadata taken out of the stream, "Server answers with an error" and "Wi-Fi login page", and every scenario of "No repeated audio after an HLS reconnect".
 - [ ] 1.3 Add the player: one station at a time, stopping, connection rounds, the 10-second limit, the waits, and skipped formats. Verify that tests pin every scenario of these requirements, including the ones where something must not happen:
   - "One station at a time" and "Stopping a live stream";
