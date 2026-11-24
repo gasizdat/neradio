@@ -44,6 +44,9 @@ internal static class IcyStream
             var metadata = buffer.AsMemory(0, buffer[0] * 16);
             await body.ReadExactlyAsync(metadata, token).ConfigureAwait(false);
             connection.Received();
+            var title = IcyTitle.Read(metadata.Span);
+            if (title is not null)
+                connection.AddTitle(title);
             untilMeta = metaInt;
         }
     }

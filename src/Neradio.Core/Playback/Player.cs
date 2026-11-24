@@ -14,14 +14,23 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     ];
     // Audio that plays this long starts the waits over.
     private static readonly TimeSpan Settled = TimeSpan.FromSeconds(60);
+    // How often decoding is checked on, for the ICY titles waiting for their audio.
+    private static readonly TimeSpan TitlePoll = TimeSpan.FromMilliseconds(250);
 
     private readonly Lock _gate = new();
     private Session? _session;
     // The connection whose audio plays, or played last and may still play from its buffer.
     private Connection? _audible;
+    private ITimer? _titlePoll;
+    // A title that repeats this one isn't a title change, even after a reconnect.
+    private string? _lastTitle;
 
     public PlayerState State { get; private set; }
     public Station? Station { get; private set; }
+    public string? Title { get; private set; }
+
+    // Raised outside the player's lock, on any thread.
+    public event Action<string>? TitleChanged;
 
     public void Play(Station station)
     {
@@ -31,8 +40,11 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         {
             previous = End();
             _session = session;
+            _lastTitle = null;
             Station = station;
             State = PlayerState.Connecting;
+            _titlePoll ??= time.CreateTimer(_ => ShowReachedTitles(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            _titlePoll.Change(TitlePoll, TitlePoll);
         }
         previous?.Cancel();
         _ = RunAsync(session);
@@ -80,6 +92,8 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
         session?.Attempt?.Audio?.Dispose();
         _audible?.Audio?.Dispose();
         _audible = null;
+        Title = null;
+        _titlePoll?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         return session?.Run;
     }
 
@@ -192,6 +206,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     {
         using var connection = new Connection(engine, time, token);
         connection.Playing += () => OnPlaying(session, connection);
+        connection.TitleChanged += title => OnOggTitle(connection, title);
         lock (_gate)
         {
             ThrowIfEnded(session, token);
@@ -224,16 +239,67 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
 
     private void OnPlaying(Session session, Connection connection)
     {
+        string[] changes;
         lock (_gate)
         {
             if (_session != session || session.Attempt != connection)
                 return;
             connection.PlayingSince = time.GetUtcNow();
-            // The engine plays a new stream only once the one before it has run out.
+            // The engine plays a new stream only once the one before it has run out, so all of
+            // that one's audio has been decoded.
+            var rest = _audible?.ReachedTitles(long.MaxValue) ?? [];
+            changes = Show(rest);
             _audible?.Audio?.Dispose();
             _audible = connection;
             State = PlayerState.Playing;
         }
+        RaiseTitleChanged(changes);
+    }
+
+    // Shows each title in turn. Returns those that count as title changes.
+    private string[] Show(IEnumerable<string> titles)
+    {
+        var changes = new List<string>();
+        foreach (var title in titles)
+        {
+            var trimmed = title.Trim();
+            Title = trimmed.Length == 0 ? null : trimmed;
+            if (Title is null || Title == _lastTitle)
+                continue;
+            _lastTitle = Title;
+            changes.Add(Title);
+        }
+        return changes.ToArray();
+    }
+
+    private void RaiseTitleChanged(string[] changes)
+    {
+        foreach (var change in changes)
+            TitleChanged?.Invoke(change);
+    }
+
+    private void ShowReachedTitles()
+    {
+        string[] changes;
+        lock (_gate)
+        {
+            var decoded = _audible?.Audio?.Decoded ?? 0;
+            var reached = _audible?.ReachedTitles(decoded) ?? [];
+            changes = Show(reached);
+        }
+        RaiseTitleChanged(changes);
+    }
+
+    private void OnOggTitle(Connection connection, string title)
+    {
+        string[] changes;
+        lock (_gate)
+        {
+            if (connection != _audible)
+                return;
+            changes = Show([title]);
+        }
+        RaiseTitleChanged(changes);
     }
 
     // One station's playback, from Play until it stops.

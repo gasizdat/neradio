@@ -10,7 +10,10 @@ internal sealed class Connection : IDisposable
     private readonly IAudioEngine _engine;
     private readonly CancellationTokenSource _stall;
     private readonly CancellationTokenSource _cancel;
+    // ICY titles, each with how many bytes of audio came before it.
+    private readonly Queue<(long At, string Title)> _titles = new();
     private TimeSpan _limit = Limit;
+    private long _written;
     private volatile bool _isUnsupported;
 
     public Connection(IAudioEngine engine, TimeProvider time, CancellationToken cancellation)
@@ -26,12 +29,15 @@ internal sealed class Connection : IDisposable
     public DateTimeOffset? PlayingSince { get; set; }
 
     public event Action? Playing;
+    // An Ogg title, which the engine raises when decoding reaches it.
+    public event Action<string>? TitleChanged;
 
     public void Open(string contentType)
     {
         Audio = _engine.Open(contentType);
         Audio.Playing += () => Playing?.Invoke();
         Audio.Unsupported += Reject;
+        Audio.TitleChanged += title => TitleChanged?.Invoke(title);
     }
 
     // HLS data arrives a segment at a time, so its limit counts the playlist's target duration too.
@@ -44,7 +50,29 @@ internal sealed class Connection : IDisposable
     {
         _stall.CancelAfter(Timeout.InfiniteTimeSpan);
         await Audio!.WriteAsync(audio, Token).ConfigureAwait(false);
+        _written += audio.Length;
         _stall.CancelAfter(_limit);
+    }
+
+    public void AddTitle(string title)
+    {
+        lock (_titles)
+            _titles.Enqueue((_written, title));
+    }
+
+    // Takes out, in order, the titles whose audio decoding has reached.
+    public string[] ReachedTitles(long decoded)
+    {
+        lock (_titles)
+        {
+            var reached = new List<string>();
+            while (_titles.TryPeek(out var next) && next.At <= decoded)
+            {
+                _titles.Dequeue();
+                reached.Add(next.Title);
+            }
+            return reached.ToArray();
+        }
     }
 
     public void Reject()

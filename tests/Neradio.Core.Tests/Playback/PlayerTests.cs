@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using Microsoft.Extensions.Time.Testing;
 using Neradio.Core.Playback;
 using Neradio.Core.Stations;
@@ -19,12 +20,14 @@ public sealed class PlayerTests
     private readonly FakeHttp _http;
     private readonly Player _player;
     private readonly DateTimeOffset _start;
+    private readonly List<string> _titleChanges = [];
 
     public PlayerTests()
     {
         _http = new FakeHttp(_time);
         var client = new HttpClient(_http);
         _player = new Player(client, _time, _engine);
+        _player.TitleChanged += _titleChanges.Add;
         _start = _time.GetUtcNow();
     }
 
@@ -616,6 +619,211 @@ public sealed class PlayerTests
         Assert.Equal(PlayerState.Playing, _player.State);
     }
 
+    // Track titles
+
+    [Fact]
+    public void NewTitle()
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+
+        SendIcy("Artist B - Song 2");
+        Decode();
+
+        Assert.Equal("Artist B - Song 2", _player.Title);
+        Assert.Equal(["Artist A - Song 1", "Artist B - Song 2"], _titleChanges);
+    }
+
+    [Fact]
+    public void TitleInAnOggStream()
+    {
+        _http.Stream(Primary, "audio/ogg");
+        _player.Play(Station(Primary));
+        Plays(Primary);
+
+        _engine.Streams[0].ChangeTitle("Artist A - Song 1");
+
+        Assert.Equal("Artist A - Song 1", _player.Title);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void EmptyTitle(string empty)
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+
+        SendIcy(empty);
+        Decode();
+
+        Assert.Null(_player.Title);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    [Fact]
+    public void StationWithoutTitles()
+    {
+        PlayIcy();
+
+        SendIcy();
+        SendIcy();
+        Decode();
+
+        Assert.Null(_player.Title);
+        Assert.Empty(_titleChanges);
+    }
+
+    [Fact]
+    public void TitleIsTrimmed()
+    {
+        PlayIcy();
+
+        SendIcy(" Artist A - Song 1 ");
+        Decode();
+
+        Assert.Equal("Artist A - Song 1", _player.Title);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    // Repeated titles aren't changes
+
+    [Fact]
+    public void StreamRepeatsItsTitle()
+    {
+        PlayIcy();
+
+        SendIcy("Artist A - Song 1");
+        SendIcy("Artist A - Song 1");
+        SendIcy("Artist A - Song 1");
+        Decode();
+
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    [Fact]
+    public void SameTitleAfterAnEmptyOne()
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+        SendIcy("");
+        Decode();
+
+        SendIcy("Artist A - Song 1");
+        Decode();
+
+        Assert.Equal("Artist A - Song 1", _player.Title);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    [Fact]
+    public void SameTitleAfterAReconnect()
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+        _http.LastBody(Primary).End();
+
+        Advance(1);
+        SendIcy("Artist A - Song 1");
+        _engine.Streams[^1].Play();
+        Decode();
+
+        Assert.Equal(2, _engine.Streams.Count);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    [Fact]
+    public void SameTitleAfterTheUserPlaysTheStationAgain()
+    {
+        var station = PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+        _player.Stop();
+
+        _player.Play(station);
+        SendIcy();
+        _engine.Streams[^1].Play();
+        SendIcy("Artist A - Song 1");
+        Decode();
+
+        Assert.Equal(["Artist A - Song 1", "Artist A - Song 1"], _titleChanges);
+    }
+
+    [Fact]
+    public void StopClearsTheTitle()
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+
+        _player.Stop();
+
+        Assert.Null(_player.Title);
+    }
+
+    // Titles show with their audio
+
+    [Fact]
+    public void TitleArrivesAheadOfItsAudio()
+    {
+        PlayIcy();
+        var stream = _engine.Streams[0];
+        SendIcy("Artist A - Song 1");
+        stream.Decoded = 4;
+
+        for (var second = 0; second < 30; second += 5)
+        {
+            Advance(5);
+            SendIcy();
+        }
+        Assert.Null(_player.Title);
+        Assert.Empty(_titleChanges);
+        stream.Decoded = 8;
+        Advance(0.25);
+
+        Assert.Equal("Artist A - Song 1", _player.Title);
+        Assert.Equal(["Artist A - Song 1"], _titleChanges);
+    }
+
+    [Fact]
+    public void NewConnectionsTitleWaitsForItsAudio()
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        Decode();
+        _http.LastBody(Primary).End();
+        Advance(1);
+
+        SendIcy("Artist B - Song 2");
+        Advance(0.25);
+        Assert.Equal("Artist A - Song 1", _player.Title);
+        _engine.Streams[^1].Play();
+        Decode();
+
+        Assert.Equal("Artist B - Song 2", _player.Title);
+        Assert.Equal(["Artist A - Song 1", "Artist B - Song 2"], _titleChanges);
+    }
+
+    [Fact]
+    public void LostConnectionsLastTitleShowsBeforeTheNewConnectionPlays()
+    {
+        PlayIcy();
+        SendIcy("Artist A - Song 1");
+        _http.LastBody(Primary).End();
+        Advance(1);
+        SendIcy("Artist B - Song 2");
+
+        _engine.Streams[^1].Play();
+        Decode();
+
+        Assert.Equal(["Artist A - Song 1", "Artist B - Song 2"], _titleChanges);
+    }
+
     private static Station Station(params Uri[] streams) =>
         new() { Name = "Station", PrimaryStream = streams[0], AlternateStreams = streams[1..] };
 
@@ -634,6 +842,40 @@ public sealed class PlayerTests
             Advance(1);
             _http.LastBody(url).Send([1]);
         }
+    }
+
+    // A stream with ICY metadata after every 4 bytes of audio, which plays.
+    private Station PlayIcy()
+    {
+        _http.Stream(Primary, metaInt: 4);
+        var station = Station(Primary);
+        _player.Play(station);
+        SendIcy();
+        _engine.Streams[^1].Play();
+        return station;
+    }
+
+    // 4 bytes of audio on the newest connection, then a metadata block: a title, or no update.
+    private void SendIcy(string? title = null)
+    {
+        byte[] block = [0];
+        if (title is not null)
+        {
+            var text = Encoding.UTF8.GetBytes($"StreamTitle='{title}';");
+            var length = (text.Length + 15) / 16;
+            block = new byte[1 + length * 16];
+            block[0] = (byte)length;
+            text.CopyTo(block, 1);
+        }
+        _http.LastBody(Primary).Send([1, 1, 1, 1, .. block]);
+    }
+
+    // Decoding reaches all the newest stream's audio, and the player checks on it.
+    private void Decode()
+    {
+        var stream = _engine.Streams[^1];
+        stream.Decoded = stream.Written.Length;
+        Advance(0.25);
     }
 
     private void Advance(double seconds)
