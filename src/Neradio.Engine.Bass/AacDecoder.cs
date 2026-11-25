@@ -17,8 +17,10 @@ internal sealed class AacDecoder
     public AacDecoder(ReadOnlySpan<byte> header)
     {
         MediaFoundationApi.Startup();
-        var rate = Rates[(header[2] >> 2) & 0x0F];
-        var channels = ((header[2] & 1) << 2) | (header[3] >> 6);
+        // ADTS header fields, ISO/IEC 13818-7.
+        var samplingFrequencyIndex = (header[2] >> 2) & 0x0F;
+        var rate = Rates[samplingFrequencyIndex];
+        var channelConfiguration = ((header[2] & 0x01) << 2) | (header[3] >> 6);
         var type = Type.GetTypeFromCLSID(MicrosoftAacDecoder)!;
         _transform = (IMFTransform)Activator.CreateInstance(type)!;
 
@@ -26,7 +28,7 @@ internal sealed class AacDecoder
         input.SetGUID(MediaFoundationAttributes.MF_MT_MAJOR_TYPE, MediaTypes.MFMediaType_Audio);
         input.SetGUID(MediaFoundationAttributes.MF_MT_SUBTYPE, AudioSubtypes.MFAudioFormat_AAC);
         input.SetUINT32(MediaFoundationAttributes.MF_MT_AUDIO_SAMPLES_PER_SECOND, rate);
-        input.SetUINT32(MediaFoundationAttributes.MF_MT_AUDIO_NUM_CHANNELS, channels);
+        input.SetUINT32(MediaFoundationAttributes.MF_MT_AUDIO_NUM_CHANNELS, channelConfiguration);
         input.SetUINT32(MediaFoundationAttributes.MF_MT_AAC_PAYLOAD_TYPE, 1);
         // The part of HEAACWAVEINFO after WAVEFORMATEX: wPayloadType 1 (ADTS), the rest zero.
         var userData = new byte[12];

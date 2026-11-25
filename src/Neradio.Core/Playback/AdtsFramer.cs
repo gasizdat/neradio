@@ -15,18 +15,20 @@ internal sealed class AdtsFramer
         var at = 0;
         while (at + HeaderSize <= joined.Length)
         {
+            // ADTS header fields, ISO/IEC 13818-7.
             var header = joined.AsSpan(at);
-            var size = ((header[3] & 0x03) << 11) | (header[4] << 3) | (header[5] >> 5);
-            var isSync = header[0] == 0xFF && (header[1] & 0xF6) == 0xF0;
-            if (!isSync || size < HeaderSize)
+            var hasSyncWord = header[0] == 0xFF && (header[1] & 0xF0) == 0xF0;
+            var layer = (header[1] >> 1) & 0x03;
+            var frameLength = ((header[3] & 0x03) << 11) | (header[4] << 3) | (header[5] >> 5);
+            if (!hasSyncWord || layer != 0 || frameLength < HeaderSize)
             {
                 at++;
                 continue;
             }
-            if (at + size > joined.Length)
+            if (at + frameLength > joined.Length)
                 break;
-            frames.Add(joined[at..(at + size)]);
-            at += size;
+            frames.Add(joined[at..(at + frameLength)]);
+            at += frameLength;
         }
         _data = joined[at..];
         return frames.ToArray();
