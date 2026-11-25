@@ -5,7 +5,8 @@ using Neradio.Core.Playback.Abstractions;
 namespace Neradio.Engine.Bass;
 
 // Every stream plays through one mixer. A stream joins it paused, and takes over once about 4
-// seconds of its audio are buffered and the one before it has run out, in the same mix.
+// seconds of its audio are buffered and the one before it has run out, in the same mix. The
+// mixer plays only while it has a stream, so the device's output stops with playback.
 internal sealed class BassEngine : IAudioEngine
 {
     // BASS_CONFIG_AM_DISABLE, which ManagedBass doesn't name. 2 leaves Android's codecs only AAC.
@@ -14,6 +15,8 @@ internal sealed class BassEngine : IAudioEngine
     private const int BufferMilliseconds = 60_000;
 
     private readonly int _mixer;
+    // Holds starting and pausing the mixer against the streams that come and go.
+    private readonly Lock _gate = new();
     private MixerSource? _current;
     private MixerSource? _next;
 
@@ -25,7 +28,6 @@ internal sealed class BassEngine : IAudioEngine
         ManagedBass.Bass.Init(-1, 48000);
         ManagedBass.Bass.PluginLoad("bassopus");
         _mixer = BassMix.CreateMixerStream(48000, 2, BassFlags.Float | BassFlags.MixerNonStop);
-        ManagedBass.Bass.ChannelPlay(_mixer);
     }
 
     public IAudioStream Open(string contentType)
@@ -35,7 +37,11 @@ internal sealed class BassEngine : IAudioEngine
 #else
         MixerSource source = new FileSource(this);
 #endif
-        Volatile.Write(ref _next, source);
+        lock (_gate)
+        {
+            Volatile.Write(ref _next, source);
+            ManagedBass.Bass.ChannelPlay(_mixer);
+        }
         return source;
     }
 
@@ -58,10 +64,15 @@ internal sealed class BassEngine : IAudioEngine
 
     public void Remove(MixerSource source)
     {
-        Interlocked.CompareExchange(ref _next, null, source);
-        var removed = Interlocked.CompareExchange(ref _current, null, source);
-        if (removed == source)
-            TakeOver();
+        lock (_gate)
+        {
+            Interlocked.CompareExchange(ref _next, null, source);
+            var removed = Interlocked.CompareExchange(ref _current, null, source);
+            if (removed == source)
+                TakeOver();
+            if (Volatile.Read(ref _current) is null && Volatile.Read(ref _next) is null)
+                ManagedBass.Bass.ChannelPause(_mixer);
+        }
     }
 #if WINDOWS
 
