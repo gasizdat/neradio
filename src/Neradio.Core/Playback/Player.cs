@@ -46,6 +46,9 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
 
     // Raised outside the player's lock, on any thread.
     public event Action<string>? TitleChanged;
+    // Also when another station plays. Raised like TitleChanged, so the state may have changed
+    // again by the time a handler reads it.
+    public event Action? StateChanged;
 
     public void Play(Station station)
     {
@@ -58,6 +61,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
             session = Start(station);
         }
         previous?.Cancel();
+        StateChanged?.Invoke();
         _ = RunAsync(session);
     }
 
@@ -67,6 +71,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     public void Stop(StopKind kind)
     {
         CancellationTokenSource? run;
+        bool changed;
         lock (_gate)
         {
             if (kind == StopKind.Interruption && _session is null)
@@ -74,9 +79,13 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
             if (kind == StopKind.User)
                 CancelSleepTimer();
             run = End();
+            var before = State;
             State = kind == StopKind.Interruption ? PlayerState.Interrupted : PlayerState.Stopped;
+            changed = State != before;
         }
         run?.Cancel();
+        if (changed)
+            StateChanged?.Invoke();
     }
 
     // The station plays again as if the user had played it, but a repeat of its last title still
@@ -90,6 +99,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
                 return;
             session = Start(Station!);
         }
+        StateChanged?.Invoke();
         _ = RunAsync(session);
     }
 
@@ -99,6 +109,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     {
         Session? session;
         CancellationTokenSource old;
+        bool changed;
         lock (_gate)
         {
             session = _session;
@@ -107,10 +118,13 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
             if (session.Attempt != _audible)
                 session.Attempt?.Audio?.Dispose();
             old = session.Restart();
-            if (State == PlayerState.Playing)
+            changed = State == PlayerState.Playing;
+            if (changed)
                 State = PlayerState.Reconnecting;
         }
         old.Cancel();
+        if (changed)
+            StateChanged?.Invoke();
         _ = RunAsync(session);
     }
 
@@ -141,6 +155,7 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     private void SleepTimerRanOut(int number)
     {
         CancellationTokenSource? run;
+        bool changed;
         lock (_gate)
         {
             // A timer set again, or cancelled, since this one fired.
@@ -148,9 +163,12 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
                 return;
             CancelSleepTimer();
             run = End();
+            changed = State != PlayerState.Stopped;
             State = PlayerState.Stopped;
         }
         run?.Cancel();
+        if (changed)
+            StateChanged?.Invoke();
     }
 
     // From the primary stream, with the waits started over.
@@ -199,18 +217,29 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
                     await time.DelayAsync(wait, token).ConfigureAwait(false);
                 }
                 var played = await RoundAsync(session, token).ConfigureAwait(false);
+                bool unsupported;
+                bool changed;
                 lock (_gate)
                 {
                     ThrowIfEnded(session, token);
-                    if (session.Streams.All(session.Skipped.Contains))
+                    var before = State;
+                    unsupported = session.Streams.All(session.Skipped.Contains);
+                    if (unsupported)
                     {
                         End();
                         State = PlayerState.Unsupported;
-                        return;
                     }
-                    session.Rounds = played >= Settled ? 0 : session.Rounds + 1;
-                    State = PlayerState.Reconnecting;
+                    else
+                    {
+                        session.Rounds = played >= Settled ? 0 : session.Rounds + 1;
+                        State = PlayerState.Reconnecting;
+                    }
+                    changed = State != before;
                 }
+                if (changed)
+                    StateChanged?.Invoke();
+                if (unsupported)
+                    return;
             }
         }
         catch (OperationCanceledException)
@@ -327,10 +356,12 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
     private void OnPlaying(Session session, Uri url, Connection connection)
     {
         string[] changes;
+        bool changed;
         lock (_gate)
         {
             if (_session != session || session.Attempt != connection)
                 return;
+            changed = State != PlayerState.Playing;
             session.LastPlayed = url;
             connection.PlayingSince = time.GetTimestamp();
             // The engine plays a new stream only once the one before it has run out, so all of
@@ -342,6 +373,8 @@ public sealed class Player(HttpClient http, TimeProvider time, IAudioEngine engi
             _audible = connection;
             State = PlayerState.Playing;
         }
+        if (changed)
+            StateChanged?.Invoke();
         RaiseTitleChanged(changes);
     }
 
