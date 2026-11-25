@@ -1,4 +1,3 @@
-#if WINDOWS
 using System.Runtime.InteropServices;
 using ManagedBass;
 using Neradio.Core.Playback;
@@ -93,4 +92,3 @@ internal sealed class AacSource(BassEngine engine) : MixerSource(engine)
         Attach(channel);
     }
 }
-#endif

@@ -19,6 +19,11 @@
     <PackageReference Include="NAudio.Wasapi" />
   </ItemGroup>
 
+  <!-- MAUI's rule for Platforms/, which a plain SDK project doesn't get. -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
+    <Compile Remove="Platforms\Windows\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Neradio.Core\Neradio.Core.csproj" />
   </ItemGroup>

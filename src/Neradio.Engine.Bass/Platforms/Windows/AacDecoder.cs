@@ -1,4 +1,3 @@
-#if WINDOWS
 using System.Runtime.InteropServices;
 using NAudio.MediaFoundation;
 
@@ -129,4 +128,3 @@ internal sealed class AacDecoder
         }
     }
 }
-#endif
