@@ -22,6 +22,7 @@ public sealed class PlayerTests
     private readonly Player _player;
     private readonly DateTimeOffset _start;
     private readonly List<string> _titleChanges = [];
+    private readonly List<PlayerState> _stateChanges = [];
 
     public PlayerTests()
     {
@@ -30,6 +31,7 @@ public sealed class PlayerTests
         var client = new HttpClient(_http);
         _player = new Player(client, _clock, _engine);
         _player.TitleChanged += _titleChanges.Add;
+        _player.StateChanged += () => _stateChanges.Add(_player.State);
         _start = _time.GetUtcNow();
     }
 
@@ -1262,6 +1264,105 @@ public sealed class PlayerTests
 
         Assert.Equal(PlayerState.Unsupported, _player.State);
         Assert.Equal(TimeSpan.FromMinutes(30), _player.SleepTimeLeft);
+    }
+
+    // State changes, for the platform's media controls
+
+    [Fact]
+    public void StateChangesAsAStationPlaysAndReconnects()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _http.LastBody(Primary).End();
+        Advance(1);
+        Plays(Primary);
+        _player.Stop(StopKind.User);
+
+        PlayerState[] states = [PlayerState.Connecting, PlayerState.Playing, PlayerState.Reconnecting, PlayerState.Playing, PlayerState.Stopped];
+        Assert.Equal(states, _stateChanges);
+    }
+
+    [Fact]
+    public void FailedRoundsChangeTheStateOnce()
+    {
+        _player.Play(Station(Primary));
+        Advance(1);
+        Advance(2);
+
+        Assert.Equal([PlayerState.Connecting, PlayerState.Reconnecting], _stateChanges);
+    }
+
+    [Fact]
+    public void AnotherStationIsAChange()
+    {
+        _http.Hang(Primary);
+        _http.Hang(Other);
+        _player.Play(Station(Primary));
+        var other = Station(Other);
+
+        _player.Play(other);
+
+        Assert.Equal([PlayerState.Connecting, PlayerState.Connecting], _stateChanges);
+    }
+
+    [Fact]
+    public void StateChangesThroughAnInterruption()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+
+        _player.Stop(StopKind.Interruption);
+        _player.EndInterruption();
+
+        PlayerState[] states = [PlayerState.Connecting, PlayerState.Playing, PlayerState.Interrupted, PlayerState.Connecting];
+        Assert.Equal(states, _stateChanges);
+    }
+
+    [Fact]
+    public void StopsThatChangeNothingAreNotChanges()
+    {
+        _player.Stop(StopKind.Interruption);
+        _player.Stop(StopKind.User);
+        _player.NetworkChanged();
+
+        Assert.Empty(_stateChanges);
+    }
+
+    [Fact]
+    public void NetworkChangeWhileConnectingIsNotAChange()
+    {
+        _http.Hang(Primary);
+        _player.Play(Station(Primary));
+
+        _player.NetworkChanged();
+
+        Assert.Equal([PlayerState.Connecting], _stateChanges);
+    }
+
+    [Fact]
+    public void UnsupportedStationIsAChange()
+    {
+        _http.Stream(Primary, "audio/flac");
+        _player.Play(Station(Primary));
+
+        _engine.Streams[0].RejectFormat();
+
+        Assert.Equal([PlayerState.Connecting, PlayerState.Unsupported], _stateChanges);
+    }
+
+    [Fact]
+    public void SleepTimerRunningOutIsAChange()
+    {
+        _http.Stream(Primary);
+        _player.Play(Station(Primary));
+        Plays(Primary);
+        _player.SetSleepTimer(TimeSpan.FromMinutes(1));
+
+        Listen(Primary, 60);
+
+        Assert.Equal([PlayerState.Connecting, PlayerState.Playing, PlayerState.Stopped], _stateChanges);
     }
 
     private static Station Station(params Uri[] streams) =>

@@ -30,7 +30,7 @@
 
 ## 4. Android
 
-- [ ] 4.1 Add the media-playback foreground service and the media session: the notification, the lock screen, headset and Bluetooth buttons, the wake and Wi-Fi locks, and the permissions. The service stays in the foreground through an interruption, and the media session stays active after a stop. Verify by hand on a real phone the scenarios of "Background playback" and "System media controls", and "Screen off on Android" of the sleep timer.
+- [x] 4.1 Add the media-playback foreground service and the media session: the notification, the lock screen, headset and Bluetooth buttons, the wake and Wi-Fi locks, and the permissions. The service stays in the foreground through an interruption, and the media session stays active after a stop. Verify by hand on a real phone the scenarios of "Background playback" and "System media controls", and "Screen off on Android" of the sleep timer.
 - [ ] 4.2 Add audio focus and the "audio becoming noisy" broadcast. Verify by hand on a real phone the scenarios of:
   - "Phone calls and other interruptions" and "Short prompts from other apps";
   - "Another app takes over";
