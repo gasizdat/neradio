@@ -21,7 +21,7 @@
 
 ## 3. Engine adapter
 
-- [ ] 3.1 Implement the engine seam with BASS, through ManagedBass, with BASSmix and BASSOPUS fetched at build time: a push stream for each connection in one mixer, held paused until about 4 seconds of its audio are buffered, with a 60-second buffer; `BASS_CONFIG_AM_DISABLE` set to 2 on Android; and on Windows, AAC decoded by Windows' own AAC decoder through NAudio.Wasapi and pushed into the mixer. That covers the playing, buffer-ran-out, unsupported-format and Ogg title events; how far decoding has got; the volume; and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
+- [x] 3.1 Implement the engine seam with BASS, through ManagedBass, with BASSmix and BASSOPUS fetched at build time: a push stream for each connection in one mixer, held paused until about 4 seconds of its audio are buffered, with a 60-second buffer; `BASS_CONFIG_AM_DISABLE` set to 2 on Android; and on Windows, AAC decoded by Windows' own AAC decoder through NAudio.Wasapi and pushed into the mixer. That covers the playing, buffer-ran-out, unsupported-format and Ogg title events; how far decoding has got; the volume; and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
   - "Stream formats" and "Plain-http streams";
   - "Server answers with an error" and "Wi-Fi login page" of "Unsupported formats";
   - "Track titles" and "Titles show with their audio", with real ICY and Ogg streams;
