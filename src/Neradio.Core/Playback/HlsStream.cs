@@ -6,6 +6,8 @@ internal sealed class HlsStream(TimeProvider time)
 {
     private const string ContentType = "audio/aac";
     private const int ChunkSize = 16 * 1024;
+    // An ID3v2 tag's header, and its footer when it has one.
+    private const int Id3HeaderSize = 10;
 
     // What the engine's buffer holds: starting this far back fills it at once.
     private static readonly TimeSpan Window = TimeSpan.FromSeconds(60);
@@ -117,11 +119,13 @@ internal sealed class HlsStream(TimeProvider time)
             return MpegTs.Aac(segment);
 
         ReadOnlySpan<byte> audio = segment;
-        while (audio.Length >= 10 && audio.StartsWith("ID3"u8))
+        while (audio.Length >= Id3HeaderSize && audio.StartsWith("ID3"u8))
         {
-            var size = (audio[6] << 21) | (audio[7] << 14) | (audio[8] << 7) | audio[9];
-            var footer = (audio[5] & 0x10) != 0 ? 10 : 0;
-            var end = Math.Min(audio.Length, 10 + size + footer);
+            // ID3v2.4: the tag's size is stored in 7 bits of each byte.
+            var tagSize = (audio[6] << 21) | (audio[7] << 14) | (audio[8] << 7) | audio[9];
+            var hasFooter = (audio[5] & 0x10) != 0;
+            var footerSize = hasFooter ? Id3HeaderSize : 0;
+            var end = Math.Min(audio.Length, Id3HeaderSize + tagSize + footerSize);
             audio = audio[end..];
         }
         return audio.ToArray();
