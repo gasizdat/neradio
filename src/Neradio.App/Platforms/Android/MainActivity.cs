@@ -24,8 +24,11 @@ public class MainActivity : MauiAppCompatActivity
     private static void PlayDebugUrl(Intent? intent)
     {
         var url = intent?.GetStringExtra("url");
-        if (url is not null)
-            DebugPlayback.Play(url);
+        if (url is null)
+            return;
+        var logo = intent!.GetStringExtra("logo");
+        int? sleep = intent.HasExtra("sleep") ? intent.GetIntExtra("sleep", 0) : null;
+        DebugPlayback.Play(url, logo, sleep);
     }
 #endif
 }
