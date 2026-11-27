@@ -1,4 +1,5 @@
 using Neradio.Core;
+using Neradio.Core.Playback;
 using Neradio.Engine.Bass;
 
 namespace Neradio.App;
@@ -20,6 +21,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<MediaControls>();
 #endif
 
-        return builder.Build();
+        var app = builder.Build();
+        // From the start, as a headset button can play the station before any window opens.
+        var player = app.Services.GetRequiredService<Player>();
+        Connectivity.Current.ConnectivityChanged += (_, _) => player.NetworkChanged();
+        return app;
     }
 }
