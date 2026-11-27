@@ -30,6 +30,9 @@ internal sealed class MediaControls
     private readonly NotificationManager _notifications;
     private readonly PowerManager.WakeLock _wakeLock;
     private readonly WifiManager.WifiLock _wifiLock;
+    private readonly AudioManager _audio;
+    private readonly AudioFocusRequestClass _focus;
+    private bool _hasFocus;
     private PlaybackService? _service;
     // StartForegroundService was called, and the service hasn't started yet.
     private bool _starting;
@@ -53,6 +56,19 @@ internal sealed class MediaControls
 #pragma warning disable CA1422
         _wifiLock = wifi.CreateWifiLock(Android.Net.WifiMode.FullHighPerf, "neradio:playback")!;
 #pragma warning restore CA1422
+
+        _audio = (AudioManager)_context.GetSystemService(Context.AudioService)!;
+        var attributes = new AudioAttributes.Builder()
+            .SetUsage(AudioUsageKind.Media)!
+            .SetContentType(AudioContentType.Music)!
+            .Build()!;
+        _focus = new AudioFocusRequestClass.Builder(AudioFocus.Gain)
+            .SetAudioAttributes(attributes)!
+            .SetOnAudioFocusChangeListener(new FocusListener(player))!
+            .Build()!;
+        // Android sends it only to receivers registered at run time.
+        var noisy = new IntentFilter(AudioManager.ActionAudioBecomingNoisy);
+        _context.RegisterReceiver(new NoisyReceiver(player), noisy);
 
         _session = new MediaSession(_context, "neradio");
         _session.SetCallback(new Callback(this));
@@ -79,7 +95,10 @@ internal sealed class MediaControls
             var notification = Notice(_player.State);
             service.StartForeground(NotificationId, notification, Android.Content.PM.ForegroundService.TypeMediaPlayback);
             if (IsActive(_player.State))
+            {
                 _service = service;
+                RequestFocus();
+            }
             else
                 Leave(service);
         }
@@ -103,13 +122,21 @@ internal sealed class MediaControls
                 _ = LoadLogoAsync(station);
             }
 
+            // Focus is kept through an interruption, or it wouldn't come back when the interruption
+            // ends.
+            var active = IsActive(state);
+            if (!active && _hasFocus)
+            {
+                _audio.AbandonAudioFocusRequest(_focus);
+                _hasFocus = false;
+            }
+
             _session.SetMetadata(Metadata());
             _session.SetPlaybackState(SessionState(state));
             HoldLocks(state is PlayerState.Connecting or PlayerState.Playing or PlayerState.Reconnecting);
 
             // Android may refuse to start a foreground service from the background, as after a
             // call, so the service stays in the foreground until playback stops.
-            var active = IsActive(state);
             if (active && _service is null && !_starting)
             {
                 _starting = true;
@@ -125,6 +152,18 @@ internal sealed class MediaControls
             if (!_starting)
                 _notifications.Notify(NotificationId, Notice(state));
         }
+    }
+
+    // Android ignores the request from an app in the background until its service is in the
+    // foreground.
+    private void RequestFocus()
+    {
+        var granted = _audio.RequestAudioFocus(_focus) == AudioFocusRequest.Granted;
+        if (granted)
+            _hasFocus = true;
+        else
+            // As during a call. The stop updates the controls again.
+            _player.Stop(StopKind.System);
     }
 
     // The notification stays, so it can play the station again.
@@ -248,5 +287,30 @@ internal sealed class MediaControls
         public override void OnPlay() => controls.Play();
         public override void OnPause() => controls.Stop();
         public override void OnStop() => controls.Stop();
+    }
+
+    private sealed class FocusListener(Player player) : Java.Lang.Object, AudioManager.IOnAudioFocusChangeListener
+    {
+        public void OnAudioFocusChange(AudioFocus focusChange)
+        {
+            switch (focusChange)
+            {
+                case AudioFocus.Gain:
+                    player.EndInterruption();
+                    break;
+                case AudioFocus.LossTransient:
+                    player.Stop(StopKind.Interruption);
+                    break;
+                case AudioFocus.Loss:
+                    player.Stop(StopKind.System);
+                    break;
+            }
+        }
+    }
+
+    // Headphones unplugged, or a Bluetooth audio device gone.
+    private sealed class NoisyReceiver(Player player) : BroadcastReceiver
+    {
+        public override void OnReceive(Context? context, Intent? intent) => player.Stop(StopKind.System);
     }
 }
