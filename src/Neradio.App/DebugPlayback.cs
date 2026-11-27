@@ -5,10 +5,10 @@ using Neradio.Core.Stations;
 namespace Neradio.App;
 
 // For hand checks until the screens exist (#10): plays a stream URL given at launch, and logs the
-// player's state and titles to the console, which is logcat on Android. On Android, a logo URL
-// and a sleep timer in seconds can come with it: --es logo <URL> --ei sleep <seconds>.
+// player's state and titles to the console, which is logcat on Android. A logo URL can come with
+// it, and on Android a sleep timer in seconds: --es logo <URL> --ei sleep <seconds>.
 //   Android: adb shell am start -f 0x20000000 -n io.github.gasizdat.neradio/crc640b41d2c63d2be6b3.MainActivity --es url <URL>
-//   Windows: Neradio.App.exe --url <URL>
+//   Windows: Neradio.App.exe --url <URL> [--logo <URL>]
 internal static class DebugPlayback
 {
     private static readonly TimeSpan StatePoll = TimeSpan.FromMilliseconds(250);

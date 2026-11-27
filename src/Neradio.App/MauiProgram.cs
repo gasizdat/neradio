@@ -17,7 +17,7 @@ public static class MauiProgram
 #endif
         builder.Services.AddNeradioCore();
         builder.Services.AddNeradioEngineBass();
-#if ANDROID
+#if ANDROID || WINDOWS
         builder.Services.AddSingleton<MediaControls>();
 #endif
 
