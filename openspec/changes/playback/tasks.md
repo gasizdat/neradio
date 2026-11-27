@@ -5,7 +5,7 @@
 ## 1. Player logic
 
 - [x] 1.1 Add the engine seam and a fake engine for the tests, as in design.md. Verify the solution builds for every target.
-- [x] 1.2 Add the connections: an `HttpClient` on a `SocketsHttpHandler` that asks for ICY metadata, takes it out of the stream and passes the rest to the engine, with the HTTP status, the content type and the bytes arriving; and HLS: the variant with the highest bandwidth, each segment once and in order, the AAC taken out of MPEG-TS and packed-audio segments, and the next segment after a reconnect. Verify that tests pin, on a fake HTTP handler with recorded stream data, the ICY metadata taken out of the stream, "Server answers with an error" and "Wi-Fi login page", and every scenario of "No repeated audio after an HLS reconnect".
+- [x] 1.2 Add the connections: an `HttpClient` on a `SocketsHttpHandler` that asks for ICY metadata, takes it out of the stream and passes the rest to the engine, with the HTTP status, the content type and the bytes arriving; and HLS: the variant with the highest bandwidth, each segment once and in order, the AAC taken out of MPEG-TS and packed-audio segments, and the next segment after a reconnect. Verify that tests pin, on a fake HTTP handler with stream data the tests build, the ICY metadata taken out of the stream, "Server answers with an error" and "Wi-Fi login page", and every scenario of "No repeated audio after an HLS reconnect".
 - [x] 1.3 Add the player: one station at a time, stopping, connection rounds, the 10-second limit, the waits, and skipped formats. Verify that tests pin every scenario of these requirements, including the ones where something must not happen:
   - "One station at a time" and "Stopping a live stream";
   - "Lost connections" and "Connection rounds";
@@ -46,9 +46,9 @@
 ## 6. Verification
 
 - [ ] 6.1 Run the CI entry point from #9: first the tests added here, then the full suite. Verify that the build and the tests pass on both Windows and Android, and that the PR lists every hand-checked scenario with its result.
-- [ ] 6.2 Before archiving, review the code against design.md and bring the two in line. Known so far:
-  - The seam has no "buffered audio ran out" event. The engine switches to a new stream on its own once the old one's audio has run out, as `IAudioEngine.Open` says. The adapter (3.1) handles that inside the switch.
-  - The seam has no volume. Nothing in the core sets it. 4.2 adds it with its caller.
+- [ ] 6.2 Before archiving, review the code against design.md and bring the two in line. The code on `main` after 5.1 has been reviewed, and design.md follows it. Still open:
+  - The seam has no volume. Nothing in the core sets it. If 4.2's hand check shows that a prompt reaches the app as a loss that allows ducking, 4.2 adds the volume with its caller; if Android lowers the app's audio on its own, design.md says so instead.
+  - 4.2's audio focus, once it's on `main`, and anything the remaining hand checks change.
 
 ## Workflow follow-up
 

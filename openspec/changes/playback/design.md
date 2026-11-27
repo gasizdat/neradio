@@ -18,7 +18,7 @@ There's no code yet. The project skeleton (#9) creates a core library with no MA
 
 ### Playback logic in the core library
 One player component in the core library owns all of this:
-- the playback state: stopped, connecting, playing, reconnecting, and interrupted, for a station stopped by a call or the like that plays again when it ends;
+- the playback state: stopped, connecting, playing, reconnecting, interrupted, for a station stopped by a call or the like that plays again when it ends, and unsupported, for a station none of whose streams the app can play;
 - the connections: the HTTP request, the ICY titles in the stream, and HLS segments;
 - connection rounds, the waits between them, and stall detection;
 - restarts on network changes;
@@ -62,19 +62,19 @@ Alternative: BASSHLS. Rejected: it starts 30 seconds behind live and replays tha
 ### One seam to the engine
 The player talks to the engine through one interface. The interface:
 - opens a decoder for a stream, given its content type, and takes the stream's bytes as they arrive;
-- stops a stream;
+- stops a stream, when the player disposes it;
 - sets the volume, for lowering it during prompts;
-- reports events: the stream's audio started playing, its buffered audio ran out, the format isn't supported, and an Ogg stream's title changed;
+- reports events: the stream's audio started playing, the format isn't supported, and an Ogg stream's title changed;
 - reports how far decoding has got in the stream's bytes, so a title can wait for its audio.
 
 It has two implementations: the BASS adapter, and a fake in the tests. Without the fake, testing the logic would need a device.
 
-The seam lets the player open a new connection while the old one's buffered audio still plays, and switch when that audio runs out ("Buffered audio while reconnecting"). #8 showed BASSmix doing that without a gap.
+The seam lets the player open a new connection while the old one's buffered audio still plays ("Buffered audio while reconnecting"). The engine switches to the new stream on its own once the old one's audio has run out, so the seam has no event for that, and the new stream's "playing" event marks the switch. #8 showed BASSmix doing that without a gap.
 
 Alternative: call BASS directly. Rejected: the logic couldn't be tested without a device.
 
 ### The BASS adapter
-- Each connection's bytes go into a BASS user stream (`STREAMFILE_BUFFERPUSH`): a decoding channel in one BASSmix mixer, which plays. The equalizer and the visualizer (#14) go on the mixer, so they stay across reconnects.
+- Each connection's bytes go into a BASS user stream (`STREAMFILE_BUFFERPUSH`): a decoding channel in one BASSmix mixer. The mixer plays only while it has a stream, so the device's output stops with playback. The equalizer and the visualizer (#14) go on the mixer, so they stay across reconnects.
 - BASS decodes MP3 and Ogg Vorbis itself, and Opus through BASSOPUS.
 - On Android, BASS hands AAC to Android's own codec. `BASS_CONFIG_AM_DISABLE` is set to 2, so Android's codecs decode only AAC. Otherwise BASS would hand them every stream its own decoders reject, and Android 9 and later would play formats that Windows doesn't, such as FLAC.
 - On Windows, BASS would hand AAC to Media Foundation and wait for 1 MiB. So the adapter decodes the ADTS frames itself with Windows' own AAC decoder, a Media Foundation transform, through the bindings in NAudio.Wasapi (MIT). It pushes the audio into a BASS push stream in the same mixer. The decoder changes its output format after an HE-AAC stream's first frames, when it finds the doubled sample rate. #8's `windecode` check reached the start level in 0.9–3.1 seconds for AAC-LC, HE-AAC and FIP's HLS.
@@ -103,7 +103,7 @@ The player downloads a URL whose path ends in `.pls`, `.m3u` or `.m3u8` with `Ht
 
 A playlist isn't kept between rounds, and a download that fails counts as a stream that failed to connect. The stream that played last is remembered by its own URL, so the next round can start with it without downloading the playlist again.
 
-An `.m3u8` with `#EXT-X-` tags is HLS, which the core plays as above. Every other URL is a stream.
+A playlist with `#EXT-X-` tags is HLS, which the core plays as above. Every other URL is a stream.
 
 Alternative: the engine's own playlist handling. Rejected: the rounds need the entries, to try them in order.
 
@@ -120,28 +120,28 @@ On connecting, servers send up to 35 seconds of audio at once (#8), so a title c
 Alternative: show each title as it arrives. Rejected: the title would change up to 35 seconds early, and the track history (#12) and playlists (#11) would act on the wrong track.
 
 ### Network changes from MAUI's `Connectivity`
-The app forwards MAUI's `Connectivity.ConnectivityChanged` event to the player on both platforms. The player then starts the waits over, with a round at once, as in "Network changes".
+The app forwards MAUI's `Connectivity.ConnectivityChanged` event to the player on both platforms, every event as it comes. It subscribes when the app is built, not when a window opens, since a headset button can play the station before any window does. The player then starts the waits over, with a round at once, as in "Network changes".
 
 Alternative: each platform's own network callbacks. Rejected: with airplane mode, #8 saw one event when the network went and one when it came back. #8 didn't get to a switch from Wi-Fi to cellular, so task 4.3 checks it on a phone.
 
 ### Android
-- **Foreground service:** a foreground service of the media-playback type runs while a station plays, reconnects or is interrupted.
+- **Foreground service:** a foreground service of the media-playback type runs while a station connects, plays, reconnects or is interrupted.
   - Android 12 and later let an app start a foreground service from the background only in some cases. A tap on the notification is one of them, and so is a media button press: on Android 16, #8 started playback with the play button two minutes after a stop, with the screen off and the app in the background. Getting audio focus back after a call isn't one of them. So the service stays in the foreground through an interruption.
   - After any other stop, the service leaves the foreground, and the media session stays active, so the notification and the headset buttons can play the station again.
 - **Media session:** Android's own `android.media.session.MediaSession` drives the notification, the lock screen and headset and Bluetooth buttons, as in #8's test app. No library is needed.
-- **Locks:** the app holds a partial wake lock and a Wi-Fi lock while playing or reconnecting, so the CPU and Wi-Fi don't sleep with the screen off.
+- **Locks:** the app holds a partial wake lock and a Wi-Fi lock while connecting, playing or reconnecting, so the CPU and Wi-Fi don't sleep with the screen off. Android 14 and later replace the Wi-Fi lock's mode with one that works only with the screen on, so there it does nothing; task 4.1's hour with the screen off played without it.
 - **Audio focus:** the app requests audio focus when playback starts.
   - A temporary loss, such as a call, an alarm or a voice assistant, is an interruption: playback stops, and the station plays again when focus returns.
   - A loss that allows ducking, such as a prompt, lowers the volume.
   - A permanent loss stops playback.
 - **Output changes:** the "audio becoming noisy" broadcast stops playback.
 - **Plain http:** no manifest setting, since the core's `SocketsHttpHandler` isn't subject to Android's cleartext policy.
-- **Permissions:** a foreground service of the media-playback type, posting notifications, and wake locks.
+- **Permissions:** a foreground service of the media-playback type, posting notifications, wake locks, and the network state, which MAUI's connectivity event needs. The app doesn't ask for the notification permission at run time: a media session's notification is exempt from it.
 
 ### Windows
-- The system media transport controls handle the media keys and Windows' media controls.
+- The system media transport controls handle the media keys and Windows' media controls. The app has no package, and no window when it starts, so the controls come from a Windows `MediaPlayer` that plays nothing, with its own command handling off. They're created at startup, so the media keys reach the app from the start.
 - The app keeps playing when minimized.
-- BASS plays on its "Default" device with `BASS_CONFIG_DEV_DEFAULT` on, so playback follows Windows' default output device. #8 didn't get to unplugging headphones on Windows, so task 5.2 checks it.
+- BASS plays on its "Default" device with `BASS_CONFIG_DEV_DEFAULT` on, which is BASS's default, so the adapter sets nothing and playback follows Windows' default output device. #8 didn't get to unplugging headphones on Windows, so task 5.2 checks it.
 - Calls and prompts need nothing from the app: Windows lowers other sounds during a call on its own.
 
 ### What #8 checked, and how the rest is verified
@@ -153,7 +153,7 @@ Alternative: each platform's own network callbacks. Rejected: with airplane mode
 
 #8 played streams through BASS's own connections. The connections above replace them, and #8 checked those only with its push check and `windecode`. So task 3.1 checks every engine scenario again by hand.
 
-In the implementation, the app logic is pinned by unit tests in the core library, running on the fake engine and fake time. The connections run on a fake HTTP handler that replays recorded stream data. That covers:
+In the implementation, the app logic is pinned by unit tests in the core library, running on the fake engine and fake time. The connections run on a fake HTTP handler that serves stream data the tests build: ICY metadata blocks, HLS playlists, MPEG-TS and packed-audio segments. That covers:
 - "One station at a time" and "Stopping a live stream";
 - "Playlist URLs" and "Unsupported formats";
 - "Track titles", "Repeated titles aren't changes" and "Titles show with their audio";
@@ -175,7 +175,7 @@ This departs from the `neradio-surgical-change` rule that every scenario is pinn
 
 ## Risks / Trade-offs
 
-- [The app takes on what BASS's connections did: HTTP, ICY, HLS and MPEG-TS] → More code to get right. Each part is in the core and unit-tested with recorded data, and task 3.1 runs it against real stations.
+- [The app takes on what BASS's connections did: HTTP, ICY, HLS and MPEG-TS] → More code to get right. Each part is in the core and unit-tested with data built in the tests, and task 3.1 runs it against real stations.
 - [Shoutcast v1 servers answer `ICY 200 OK`, which `HttpClient` rejects] → Such stations fail to connect. The catalog (#4) shows how many stations do this. If they matter, the core reads those responses over a plain socket.
 - [The variant with the highest bandwidth uses more mobile data] → FIP's highest is 280 kbps, about 125 MB an hour. Accepted for now; a later change can add a setting.
 - [Some phone makers' battery savers kill foreground services despite Android's rules] → #8 played 30 minutes with the screen off on the owner's phone without it happening. If it happens later, a later change guides the user to exempt the app.
