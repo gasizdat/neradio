@@ -130,11 +130,12 @@ Alternative: each platform's own network callbacks. Rejected: with airplane mode
   - After any other stop, the service leaves the foreground, and the media session stays active, so the notification and the headset buttons can play the station again.
 - **Media session:** Android's own `android.media.session.MediaSession` drives the notification, the lock screen and headset and Bluetooth buttons, as in #8's test app. No library is needed.
 - **Locks:** the app holds a partial wake lock and a Wi-Fi lock while connecting, playing or reconnecting, so the CPU and Wi-Fi don't sleep with the screen off. Android 14 and later replace the Wi-Fi lock's mode with one that works only with the screen on, so there it does nothing; task 4.1's hour with the screen off played without it.
-- **Audio focus:** the app requests audio focus when playback starts.
+- **Audio focus:** the app requests audio focus for music when playback starts, once the service is in the foreground: Android 16 ignores a request from an app in the background. A refused request, as during a call, is a stop by the system.
+  - The app keeps focus through an interruption, or it wouldn't come back when the interruption ends, and gives it up once playback stops.
   - A temporary loss, such as a call, an alarm or a voice assistant, is an interruption: playback stops, and the station plays again when focus returns.
   - A loss that allows ducking, such as a prompt, lowers the volume.
-  - A permanent loss stops playback.
-- **Output changes:** the "audio becoming noisy" broadcast stops playback.
+  - A permanent loss, such as another app taking over, is a stop by the system, so the station doesn't play again.
+- **Output changes:** the "audio becoming noisy" broadcast, for headphones unplugged or a Bluetooth audio device gone, is a stop by the system. Android sends it only to receivers registered at run time, so the app registers it in code.
 - **Plain http:** no manifest setting, since the core's `SocketsHttpHandler` isn't subject to Android's cleartext policy.
 - **Permissions:** a foreground service of the media-playback type, posting notifications, wake locks, and the network state, which MAUI's connectivity event needs. The app doesn't ask for the notification permission at run time: a media session's notification is exempt from it.
 

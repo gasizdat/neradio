@@ -46,9 +46,9 @@
 ## 6. Verification
 
 - [ ] 6.1 Run the CI entry point from #9: first the tests added here, then the full suite. Verify that the build and the tests pass on both Windows and Android, and that the PR lists every hand-checked scenario with its result.
-- [ ] 6.2 Before archiving, review the code against design.md and bring the two in line. The code on `main` after 5.1 has been reviewed, and design.md follows it. Still open:
+- [ ] 6.2 Before archiving, review the code against design.md and bring the two in line. The code on `main` after 4.2 has been reviewed, and design.md follows it. Still open:
   - The seam has no volume. Nothing in the core sets it. If 4.2's hand check shows that a prompt reaches the app as a loss that allows ducking, 4.2 adds the volume with its caller; if Android lowers the app's audio on its own, design.md says so instead.
-  - 4.2's audio focus, once it's on `main`, and anything the remaining hand checks change.
+  - Anything the remaining hand checks change.
 
 ## Workflow follow-up
 
