@@ -14,10 +14,17 @@ public partial class App : MauiWinUIApplication
         base.OnLaunched(args);
         IPlatformApplication.Current!.Services.GetRequiredService<MediaControls>();
 #if DEBUG
-        var arguments = Environment.GetCommandLineArgs();
-        var at = Array.IndexOf(arguments, "--url");
-        if (at >= 0 && at + 1 < arguments.Length)
-            DebugPlayback.Play(arguments[at + 1]);
+        if (Argument("--url") is { } url)
+            DebugPlayback.Play(url, Argument("--logo"));
 #endif
     }
+#if DEBUG
+
+    private static string? Argument(string name)
+    {
+        var arguments = Environment.GetCommandLineArgs();
+        var at = Array.IndexOf(arguments, name);
+        return at >= 0 && at + 1 < arguments.Length ? arguments[at + 1] : null;
+    }
+#endif
 }
