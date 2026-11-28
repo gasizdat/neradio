@@ -198,15 +198,15 @@ internal sealed class MediaControls
         return builder.Build()!;
     }
 
-    // Headset buttons toggle through PlayPause: a press stops a station that plays or connects,
-    // and plays a stopped one.
+    // Headset buttons toggle through PlayPause: a press stops a station that plays, connects or is
+    // interrupted, and plays a stopped one. Android 13 and later draw a paused session with a play
+    // button, so an interruption shows as playing: a press during a call is the user's stop.
     private static PlaybackState SessionState(PlayerState state)
     {
         var (shown, actions) = state switch
         {
-            PlayerState.Playing => (PlaybackStateCode.Playing, PlaybackState.ActionPause | PlaybackState.ActionStop),
+            PlayerState.Playing or PlayerState.Interrupted => (PlaybackStateCode.Playing, PlaybackState.ActionPause | PlaybackState.ActionStop),
             PlayerState.Connecting or PlayerState.Reconnecting => (PlaybackStateCode.Buffering, PlaybackState.ActionPause | PlaybackState.ActionStop),
-            PlayerState.Interrupted => (PlaybackStateCode.Paused, PlaybackState.ActionStop),
             _ => (PlaybackStateCode.Stopped, PlaybackState.ActionPlay),
         };
         return new PlaybackState.Builder()
