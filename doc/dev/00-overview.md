@@ -49,7 +49,8 @@ From the bottom up. Dependencies only point down this list, never up.
   service, the media session, audio focus, Windows' media controls and network changes, each
   behind an interface the core defines.
 
-The tests mirror the layers: `Neradio.Core.Tests` and `Neradio.UI.Tests`. See
+The tests mirror the layers: `Neradio.Core.Tests`, `Neradio.UI.Tests` and, on Windows,
+`Neradio.Engine.Bass.Tests`. See
 [principles/testing-strategy.md](principles/testing-strategy.md).
 
 Keeping `Neradio.Core` and `Neradio.UI` free of MAUI is a maintained boundary, not an accident: it
