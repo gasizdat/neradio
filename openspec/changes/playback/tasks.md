@@ -21,7 +21,7 @@
 
 ## 3. Engine adapter
 
-- [x] 3.1 Implement the engine seam with BASS, through ManagedBass, with BASSmix and BASSOPUS fetched at build time: a push stream for each connection in one mixer, held paused until about 4 seconds of its audio are buffered, with a 60-second buffer; `BASS_CONFIG_AM_DISABLE` set to 2 on Android; and on Windows, AAC decoded by Windows' own AAC decoder through NAudio.Wasapi and pushed into the mixer. That covers the playing, buffer-ran-out, unsupported-format and Ogg title events; how far decoding has got; the volume; and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
+- [x] 3.1 Implement the engine seam with BASS, through ManagedBass, with BASSmix and BASSOPUS fetched at build time: a push stream for each connection in one mixer, held paused until about 4 seconds of its audio are buffered, with a 60-second buffer; `BASS_CONFIG_AM_DISABLE` set to 2 on Android; and on Windows, AAC decoded by Windows' own AAC decoder through NAudio.Wasapi and pushed into the mixer. That covers the playing, buffer-ran-out, unsupported-format and Ogg title events; how far decoding has got; and switching from the old connection's buffer to a new one. Verify by hand, on Android and on Windows, the scenarios of:
   - "Stream formats" and "Plain-http streams";
   - "Server answers with an error" and "Wi-Fi login page" of "Unsupported formats";
   - "Track titles" and "Titles show with their audio", with real ICY and Ogg streams;
@@ -47,7 +47,6 @@
 
 - [ ] 6.1 Run the CI entry point from #9: first the tests added here, then the full suite. Verify that the build and the tests pass on both Windows and Android, and that the PR lists every hand-checked scenario with its result.
 - [ ] 6.2 Before archiving, review the code against design.md and bring the two in line. The code on `main` after 4.2 has been reviewed, and design.md follows it. Still open:
-  - The seam has no volume. Nothing in the core sets it. If 4.2's hand check shows that a prompt reaches the app as a loss that allows ducking, 4.2 adds the volume with its caller; if Android lowers the app's audio on its own, design.md says so instead.
   - Anything the remaining hand checks change.
 
 ## Workflow follow-up

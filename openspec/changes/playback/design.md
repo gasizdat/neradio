@@ -63,7 +63,6 @@ Alternative: BASSHLS. Rejected: it starts 30 seconds behind live and replays tha
 The player talks to the engine through one interface. The interface:
 - opens a decoder for a stream, given its content type, and takes the stream's bytes as they arrive;
 - stops a stream, when the player disposes it;
-- sets the volume, for lowering it during prompts;
 - reports events: the stream's audio started playing, the format isn't supported, and an Ogg stream's title changed;
 - reports how far decoding has got in the stream's bytes, so a title can wait for its audio.
 
@@ -133,7 +132,7 @@ Alternative: each platform's own network callbacks. Rejected: with airplane mode
 - **Audio focus:** the app requests audio focus for music when playback starts, once the service is in the foreground: Android 16 ignores a request from an app in the background. A refused request, as during a call, is a stop by the system.
   - The app keeps focus through an interruption, or it wouldn't come back when the interruption ends, and gives it up once playback stops.
   - A temporary loss, such as a call, an alarm or a voice assistant, is an interruption: playback stops, and the station plays again when focus returns.
-  - A loss that allows ducking, such as a prompt, lowers the volume.
+  - A loss that allows ducking, such as a prompt, changes nothing in the app: Android lowers the app's audio itself, and restores it after the prompt. On Android 16, task 4.2 heard a Google Maps instruction lower the station while the app ignored the loss. Lowering the volume in the app as well would lower it twice.
   - A permanent loss, such as another app taking over, is a stop by the system, so the station doesn't play again.
 - **Output changes:** the "audio becoming noisy" broadcast, for headphones unplugged or a Bluetooth audio device gone, is a stop by the system. Android sends it only to receivers registered at run time, so the app registers it in code.
 - **Plain http:** no manifest setting, since the core's `SocketsHttpHandler` isn't subject to Android's cleartext policy.
